@@ -1,0 +1,16 @@
+version: '3.9'
+services:
+  db:
+    image: postgres:16
+    restart: always
+    environment:
+      POSTGRES_USER: vaultify
+      POSTGRES_PASSWORD: vaultify
+      POSTGRES_DB: vaultify
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+
+volumes:
+  db-data:

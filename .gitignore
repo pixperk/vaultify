@@ -1,0 +1,45 @@
+# Binaries
+/bin/
+/cmd/server/server
+
+# IDE/editor junk
+.vscode/
+.idea/
+*.swp
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Env & Configs
+app.env
+*.env
+
+# Logs
+*.log
+
+# Dependency and build artifacts
+vendor/
+*.exe
+*.out
+*.test
+
+# Go stuff
+/go.sum
+*.coverprofile
+
+# SQLC artifacts 
+internal/db/sqlc/
+
+
+# Docker
+*.pid
+docker-compose.override.yml
+
+
+# Cache & temporary files
+*.tmp
+*.cache
+
+# Test output
+coverage.out
