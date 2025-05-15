@@ -8,12 +8,14 @@ import (
 	"github.com/pixperk/vaultify/internal/auth"
 	"github.com/pixperk/vaultify/internal/config"
 	db "github.com/pixperk/vaultify/internal/db/sqlc"
+	"github.com/pixperk/vaultify/internal/secrets"
 )
 
 type Server struct {
 	config     *config.Config
 	store      db.Store
 	tokenMaker auth.TokenMaker
+	encryptor  *secrets.Encryptor
 	router     *gin.Engine
 }
 
@@ -22,10 +24,17 @@ func NewServer(config *config.Config, store db.Store) (*Server, error) {
 	if err != nil {
 		return nil, fmt.Errorf("cannot create token maker : %w", err)
 	}
+
+	encryptor, err := secrets.NewEncryptor([]byte(config.SecretsSymmetricKey))
+	if err != nil {
+		return nil, fmt.Errorf("cannot create encryptor : %w", err)
+	}
+
 	server := &Server{
 		config:     config,
 		store:      store,
 		tokenMaker: tokenMaker,
+		encryptor:  encryptor,
 	}
 
 	r := server.setupRouter()
@@ -42,6 +51,9 @@ func (s *Server) setupRouter() *gin.Engine {
 	})
 	r.POST("/sign-up", s.createUser)
 	r.POST("/login", s.loginUser)
+
+	authRoutes := r.Group("/secrets").Use(authMiddleware(s.tokenMaker))
+	authRoutes.POST("/", s.createSecret)
 
 	return r
 
