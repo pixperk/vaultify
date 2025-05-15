@@ -1,0 +1,1 @@
+DROP if EXISTS secrets;

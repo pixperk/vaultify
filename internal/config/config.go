@@ -14,7 +14,8 @@ type Config struct {
 	DbUser              string `mapstructure:"DB_USER"`
 	DbPass              string `mapstructure:"DB_PASSWORD"`
 	DbName              string `mapstructure:"DB_NAME"`
-	TokenSymmeticKey    string `mapstructure:"TOKEN_SYMMETRIC_KEY"`
+	TokenSymmetricKey   string `mapstructure:"TOKEN_SYMMETRIC_KEY"`
+	SecretsSymmetricKey string `mapstructure:"SECRETS_SYMMETRIC_KEY"`
 	DBSource            string
 	AccessTokenDuration time.Duration `mapstructure:"ACCESS_TOKEN_DURATION"`
 }
