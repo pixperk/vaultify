@@ -10,6 +10,16 @@ import (
 	"github.com/google/uuid"
 )
 
+type Secrets struct {
+	ID             uuid.UUID    `json:"id"`
+	UserID         uuid.UUID    `json:"user_id"`
+	Path           string       `json:"path"`
+	EncryptedValue []byte       `json:"encrypted_value"`
+	Nonce          []byte       `json:"nonce"`
+	CreatedAt      sql.NullTime `json:"created_at"`
+	UpdatedAt      sql.NullTime `json:"updated_at"`
+}
+
 type Users struct {
 	ID           uuid.UUID    `json:"id"`
 	Email        string       `json:"email"`

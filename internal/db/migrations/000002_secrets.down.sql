@@ -1,1 +1,1 @@
-DROP if EXISTS secrets;
+DROP TABLE IF EXISTS secrets;

@@ -11,7 +11,10 @@ import (
 )
 
 type Querier interface {
+	CreateSecret(ctx context.Context, arg CreateSecretParams) (Secrets, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (Users, error)
+	GetAllSecretsForUser(ctx context.Context, userID uuid.UUID) ([]Secrets, error)
+	GetSecretByPath(ctx context.Context, path string) (Secrets, error)
 	GetUserByEmail(ctx context.Context, email string) (Users, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (Users, error)
 }
