@@ -41,6 +41,7 @@ func (s *Server) setupRouter() *gin.Engine {
 		c.JSON(http.StatusOK, gin.H{"message": "pong"})
 	})
 	r.POST("/sign-up", s.createUser)
+	r.POST("/login", s.loginUser)
 
 	return r
 

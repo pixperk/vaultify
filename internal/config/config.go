@@ -1,19 +1,22 @@
 package config
 
 import (
+	"time"
+
 	"github.com/spf13/viper"
 )
 
 type Config struct {
-	Port             string `mapstructure:"PORT"`
-	Env              string `mapstructure:"ENV"`
-	DbHost           string `mapstructure:"DB_HOST"`
-	DbPort           string `mapstructure:"DB_PORT"`
-	DbUser           string `mapstructure:"DB_USER"`
-	DbPass           string `mapstructure:"DB_PASSWORD"`
-	DbName           string `mapstructure:"DB_NAME"`
-	TokenSymmeticKey string `mapstructure:"TOKEN_SYMMETRIC_KEY"`
-	DBSource         string
+	Port                string `mapstructure:"PORT"`
+	Env                 string `mapstructure:"ENV"`
+	DbHost              string `mapstructure:"DB_HOST"`
+	DbPort              string `mapstructure:"DB_PORT"`
+	DbUser              string `mapstructure:"DB_USER"`
+	DbPass              string `mapstructure:"DB_PASSWORD"`
+	DbName              string `mapstructure:"DB_NAME"`
+	TokenSymmeticKey    string `mapstructure:"TOKEN_SYMMETRIC_KEY"`
+	DBSource            string
+	AccessTokenDuration time.Duration `mapstructure:"ACCESS_TOKEN_DURATION"`
 }
 
 func LoadConfig(path string) (config Config, err error) {
