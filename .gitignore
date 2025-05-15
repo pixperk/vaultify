@@ -28,10 +28,6 @@ vendor/
 /go.sum
 *.coverprofile
 
-# SQLC artifacts 
-internal/db/sqlc/
-
-
 # Docker
 *.pid
 docker-compose.override.yml
