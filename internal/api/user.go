@@ -92,7 +92,7 @@ func (s *Server) loginUser(ctx *gin.Context) {
 		return
 	}
 
-	accessToken, err := s.tokenMaker.CreateToken(user.Email, time.Duration(s.config.AccessTokenDuration))
+	accessToken, err := s.tokenMaker.CreateToken(user.ID, time.Duration(s.config.AccessTokenDuration))
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return

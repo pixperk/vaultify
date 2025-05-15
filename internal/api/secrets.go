@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/lib/pq"
@@ -22,6 +23,11 @@ type secretResponse struct {
 	Nonce     []byte `json:"nonce"`
 }
 
+type getSecretResponse struct {
+	Path      string `json:"path"`
+	Decrypted string `json:"decrypted_value"`
+}
+
 func (s *Server) createSecret(ctx *gin.Context) {
 	var req createSecretRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -36,13 +42,14 @@ func (s *Server) createSecret(ctx *gin.Context) {
 		return
 	}
 
-	user, err := s.store.GetUserByEmail(ctx, authPayload.Email)
+	user, err := s.store.GetUserByID(ctx, authPayload.UserID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			ctx.JSON(404, gin.H{"error": "user not found"})
+			ctx.JSON(http.StatusNotFound, errorResponse(err))
 			return
 		}
-		ctx.JSON(500, gin.H{"error": "internal server error"})
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
 	}
 
 	// Encrypt the secret value
@@ -53,8 +60,8 @@ func (s *Server) createSecret(ctx *gin.Context) {
 	}
 
 	arg := db.CreateSecretParams{
-		UserID:         user.ID,
-		Path:           fmt.Sprintf("%s/%s", authPayload.Email, req.Path),
+		UserID:         authPayload.ID,
+		Path:           fmt.Sprintf("%s/%s", user.Email, req.Path),
 		EncryptedValue: encryptedValue,
 		Nonce:          nonce,
 	}
@@ -80,5 +87,43 @@ func (s *Server) createSecret(ctx *gin.Context) {
 	}
 
 	ctx.JSON(200, resp)
+
+}
+
+func (s *Server) getSecret(ctx *gin.Context) {
+
+	authPayload := ctx.MustGet(authorizationPayloadKey).(*auth.Payload)
+
+	rawPath := ctx.Param("path")
+	path := strings.TrimPrefix(rawPath, "/") // remove leading slash
+	secret, err := s.store.GetSecretByPath(ctx, path)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			ctx.JSON(http.StatusNotFound, errorResponse(err))
+			return
+		}
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	//TODO : Check if secret is shared with the user
+	if secret.UserID != authPayload.UserID {
+		ctx.JSON(http.StatusForbidden, errorResponse(fmt.Errorf("you are not authorized to access this secret")))
+		return
+	}
+
+	// Decrypt the secret value
+	decryptedValue, err := s.encryptor.Decrypt(secret.EncryptedValue, secret.Nonce)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	resp := getSecretResponse{
+		Path:      secret.Path,
+		Decrypted: string(decryptedValue),
+	}
+
+	ctx.JSON(http.StatusOK, resp)
 
 }
