@@ -40,6 +40,7 @@ func (s *Server) setupRouter() *gin.Engine {
 	r.GET("/ping", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "pong"})
 	})
+	r.POST("/sign-up", s.createUser)
 
 	return r
 
@@ -47,4 +48,8 @@ func (s *Server) setupRouter() *gin.Engine {
 
 func (s *Server) Start(address string) error {
 	return http.ListenAndServe(address, s.router)
+}
+
+func errorResponse(err error) gin.H {
+	return gin.H{"error": err.Error()}
 }
