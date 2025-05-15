@@ -5,15 +5,15 @@ import (
 )
 
 type Config struct {
-	Port      string `mapstructure:"PORT"`
-	Env       string `mapstructure:"ENV"`
-	DbHost    string `mapstructure:"DB_HOST"`
-	DbPort    string `mapstructure:"DB_PORT"`
-	DbUser    string `mapstructure:"DB_USER"`
-	DbPass    string `mapstructure:"DB_PASSWORD"`
-	DbName    string `mapstructure:"DB_NAME"`
-	JwtSecret string `mapstructure:"JWT_SECRET"`
-	DBSource  string
+	Port             string `mapstructure:"PORT"`
+	Env              string `mapstructure:"ENV"`
+	DbHost           string `mapstructure:"DB_HOST"`
+	DbPort           string `mapstructure:"DB_PORT"`
+	DbUser           string `mapstructure:"DB_USER"`
+	DbPass           string `mapstructure:"DB_PASSWORD"`
+	DbName           string `mapstructure:"DB_NAME"`
+	TokenSymmeticKey string `mapstructure:"TOKEN_SYMMETRIC_KEY"`
+	DBSource         string
 }
 
 func LoadConfig(path string) (config Config, err error) {

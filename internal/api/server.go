@@ -1,25 +1,31 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/pixperk/vaultify/internal/auth"
 	"github.com/pixperk/vaultify/internal/config"
 	db "github.com/pixperk/vaultify/internal/db/sqlc"
 )
 
 type Server struct {
-	config *config.Config
-	store  db.Store
-	//token Maker
-	router *gin.Engine
+	config     *config.Config
+	store      db.Store
+	tokenMaker auth.TokenMaker
+	router     *gin.Engine
 }
 
 func NewServer(config *config.Config, store db.Store) (*Server, error) {
-
+	tokenMaker, err := auth.NewPasetoMaker(config.TokenSymmeticKey)
+	if err != nil {
+		return nil, fmt.Errorf("cannot create token maker : %w", err)
+	}
 	server := &Server{
-		config: config,
-		store:  store,
+		config:     config,
+		store:      store,
+		tokenMaker: tokenMaker,
 	}
 
 	r := server.setupRouter()
