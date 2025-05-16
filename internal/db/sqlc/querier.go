@@ -14,9 +14,13 @@ type Querier interface {
 	CreateSecret(ctx context.Context, arg CreateSecretParams) (Secrets, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (Users, error)
 	GetAllSecretsForUser(ctx context.Context, userID uuid.UUID) ([]Secrets, error)
+	GetPermissions(ctx context.Context, arg GetPermissionsParams) (string, error)
 	GetSecretByPath(ctx context.Context, path string) (Secrets, error)
+	GetSecretsSharedWithMe(ctx context.Context, targetEmail string) ([]GetSecretsSharedWithMeRow, error)
+	GetSharedWith(ctx context.Context, path string) ([]GetSharedWithRow, error)
 	GetUserByEmail(ctx context.Context, email string) (Users, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (Users, error)
+	ShareSecret(ctx context.Context, arg ShareSecretParams) (SharingRules, error)
 }
 
 var _ Querier = (*Queries)(nil)

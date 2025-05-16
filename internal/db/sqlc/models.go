@@ -20,6 +20,15 @@ type Secrets struct {
 	UpdatedAt      sql.NullTime `json:"updated_at"`
 }
 
+type SharingRules struct {
+	ID          uuid.UUID    `json:"id"`
+	OwnerEmail  string       `json:"owner_email"`
+	TargetEmail string       `json:"target_email"`
+	Path        string       `json:"path"`
+	Permission  string       `json:"permission"`
+	CreatedAt   sql.NullTime `json:"created_at"`
+}
+
 type Users struct {
 	ID           uuid.UUID    `json:"id"`
 	Email        string       `json:"email"`
