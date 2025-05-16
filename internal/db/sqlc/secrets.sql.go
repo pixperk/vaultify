@@ -7,21 +7,23 @@ package db
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/google/uuid"
 )
 
 const createSecret = `-- name: CreateSecret :one
-INSERT INTO secrets (user_id, path, encrypted_value, nonce)
-VALUES ($1, $2, $3, $4)
-RETURNING id, user_id, path, encrypted_value, nonce, created_at, updated_at
+INSERT INTO secrets (user_id, path, encrypted_value, nonce, expires_at)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, user_id, path, encrypted_value, nonce, created_at, updated_at, expires_at
 `
 
 type CreateSecretParams struct {
-	UserID         uuid.UUID `json:"user_id"`
-	Path           string    `json:"path"`
-	EncryptedValue []byte    `json:"encrypted_value"`
-	Nonce          []byte    `json:"nonce"`
+	UserID         uuid.UUID    `json:"user_id"`
+	Path           string       `json:"path"`
+	EncryptedValue []byte       `json:"encrypted_value"`
+	Nonce          []byte       `json:"nonce"`
+	ExpiresAt      sql.NullTime `json:"expires_at"`
 }
 
 func (q *Queries) CreateSecret(ctx context.Context, arg CreateSecretParams) (Secrets, error) {
@@ -30,6 +32,7 @@ func (q *Queries) CreateSecret(ctx context.Context, arg CreateSecretParams) (Sec
 		arg.Path,
 		arg.EncryptedValue,
 		arg.Nonce,
+		arg.ExpiresAt,
 	)
 	var i Secrets
 	err := row.Scan(
@@ -40,12 +43,13 @@ func (q *Queries) CreateSecret(ctx context.Context, arg CreateSecretParams) (Sec
 		&i.Nonce,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ExpiresAt,
 	)
 	return i, err
 }
 
 const getAllSecretsForUser = `-- name: GetAllSecretsForUser :many
-SELECT id, user_id, path, encrypted_value, nonce, created_at, updated_at FROM secrets WHERE user_id = $1
+SELECT id, user_id, path, encrypted_value, nonce, created_at, updated_at, expires_at FROM secrets WHERE user_id = $1 AND (expires_at IS NULL OR expires_at > now())
 `
 
 func (q *Queries) GetAllSecretsForUser(ctx context.Context, userID uuid.UUID) ([]Secrets, error) {
@@ -65,6 +69,7 @@ func (q *Queries) GetAllSecretsForUser(ctx context.Context, userID uuid.UUID) ([
 			&i.Nonce,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ExpiresAt,
 		); err != nil {
 			return nil, err
 		}
@@ -80,7 +85,7 @@ func (q *Queries) GetAllSecretsForUser(ctx context.Context, userID uuid.UUID) ([
 }
 
 const getSecretByPath = `-- name: GetSecretByPath :one
-SELECT id, user_id, path, encrypted_value, nonce, created_at, updated_at FROM secrets WHERE path = $1
+SELECT id, user_id, path, encrypted_value, nonce, created_at, updated_at, expires_at FROM secrets WHERE path = $1 AND (expires_at IS NULL OR expires_at > now())
 `
 
 func (q *Queries) GetSecretByPath(ctx context.Context, path string) (Secrets, error) {
@@ -94,6 +99,7 @@ func (q *Queries) GetSecretByPath(ctx context.Context, path string) (Secrets, er
 		&i.Nonce,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ExpiresAt,
 	)
 	return i, err
 }
@@ -104,7 +110,7 @@ SET encrypted_value = $2,
     nonce = $3,
     updated_at = NOW()
 WHERE path = $1
-RETURNING id, user_id, path, encrypted_value, nonce, created_at, updated_at
+RETURNING id, user_id, path, encrypted_value, nonce, created_at, updated_at, expires_at
 `
 
 type UpdateSecretParams struct {
@@ -124,6 +130,7 @@ func (q *Queries) UpdateSecret(ctx context.Context, arg UpdateSecretParams) (Sec
 		&i.Nonce,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ExpiresAt,
 	)
 	return i, err
 }

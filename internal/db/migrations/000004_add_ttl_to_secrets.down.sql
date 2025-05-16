@@ -1,0 +1,1 @@
+ALTER TABLE secrets DROP COLUMN IF EXISTS expires_at;

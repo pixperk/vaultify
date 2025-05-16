@@ -1,9 +1,11 @@
 package api
 
 import (
+	"database/sql"
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/lib/pq"
@@ -12,8 +14,9 @@ import (
 )
 
 type createSecretRequest struct {
-	Path  string `json:"path" binding:"required"`
-	Value string `json:"value" binding:"required"`
+	Path       string `json:"path" binding:"required"`
+	Value      string `json:"value" binding:"required"`
+	TTLSeconds int64  `json:"ttl_seconds"`
 }
 
 type secretResponse struct {
@@ -48,6 +51,14 @@ func (s *Server) createSecret(ctx *gin.Context) {
 		return
 	}
 
+	var expiresAt sql.NullTime
+	if req.TTLSeconds > 0 {
+		expiresAt = sql.NullTime{
+			Time:  time.Now().Add(time.Duration(req.TTLSeconds) * time.Second),
+			Valid: true,
+		}
+	}
+
 	//make an array of path string words separated by space
 	pathWords := strings.Fields(req.Path)
 	var path string
@@ -63,6 +74,7 @@ func (s *Server) createSecret(ctx *gin.Context) {
 		Path:           path,
 		EncryptedValue: encryptedValue,
 		Nonce:          nonce,
+		ExpiresAt:      expiresAt,
 	}
 
 	secret, err := s.store.CreateSecret(ctx, arg)

@@ -18,6 +18,7 @@ type Secrets struct {
 	Nonce          []byte       `json:"nonce"`
 	CreatedAt      sql.NullTime `json:"created_at"`
 	UpdatedAt      sql.NullTime `json:"updated_at"`
+	ExpiresAt      sql.NullTime `json:"expires_at"`
 }
 
 type SharingRules struct {
