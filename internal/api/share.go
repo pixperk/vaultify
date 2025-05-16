@@ -16,7 +16,7 @@ type shareSecretRequest struct {
 	Path         string `json:"path" binding:"required"`
 	TargetEmail  string `json:"target_email" binding:"email,required"`
 	Permission   string `json:"permission" binding:"required,oneof=read write"`
-	ShareTTLSecs int    `json:"share_ttl_secs" binding:"required,min=1"`
+	ShareTTLSecs int    `json:"share_ttl_secs"`
 }
 
 type shareSecretResponse struct {
