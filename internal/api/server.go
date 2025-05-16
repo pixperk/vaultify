@@ -55,6 +55,7 @@ func (s *Server) setupRouter() *gin.Engine {
 	authRoutes := r.Group("/secrets").Use(authMiddleware(s.tokenMaker))
 	authRoutes.POST("/", s.createSecret)
 	authRoutes.GET("/*path", s.getSecret)
+	authRoutes.POST("/share", s.shareSecret)
 
 	return r
 

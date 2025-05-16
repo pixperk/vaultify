@@ -42,16 +42,6 @@ func (s *Server) createSecret(ctx *gin.Context) {
 		return
 	}
 
-	user, err := s.store.GetUserByID(ctx, authPayload.UserID)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			ctx.JSON(http.StatusNotFound, errorResponse(err))
-			return
-		}
-		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
-		return
-	}
-
 	// Encrypt the secret value
 	encryptedValue, nonce, err := s.encryptor.Encrypt([]byte(req.Value))
 	if err != nil {
@@ -63,10 +53,10 @@ func (s *Server) createSecret(ctx *gin.Context) {
 	pathWords := strings.Fields(req.Path)
 	var path string
 	if len(pathWords) < 2 {
-		path = fmt.Sprintf("%s/%s", user.Email, req.Path)
+		path = fmt.Sprintf("%s/%s", authPayload.Email, req.Path)
 	} else {
 		//join the path words with a -
-		path = fmt.Sprintf("%s/%s", user.Email, strings.Join(pathWords, "-"))
+		path = fmt.Sprintf("%s/%s", authPayload.Email, strings.Join(pathWords, "-"))
 	}
 
 	arg := db.CreateSecretParams{
