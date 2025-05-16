@@ -3,6 +3,7 @@ package api
 import (
 	"database/sql"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/pixperk/vaultify/internal/auth"
@@ -12,9 +13,10 @@ import (
 )
 
 type shareSecretRequest struct {
-	Path        string `json:"path" binding:"required"`
-	TargetEmail string `json:"target_email" binding:"email,required"`
-	Permission  string `json:"permission" binding:"required,oneof=read write"`
+	Path         string `json:"path" binding:"required"`
+	TargetEmail  string `json:"target_email" binding:"email,required"`
+	Permission   string `json:"permission" binding:"required,oneof=read write"`
+	ShareTTLSecs int    `json:"share_ttl_secs" binding:"required,min=1"`
 }
 
 type shareSecretResponse struct {
@@ -78,11 +80,20 @@ func (s *Server) shareSecret(ctx *gin.Context) {
 		return
 	}
 
+	var sharedUntil sql.NullTime
+	if req.ShareTTLSecs > 0 {
+		sharedUntil = sql.NullTime{
+			Time:  time.Now().Add(time.Duration(req.ShareTTLSecs) * time.Second),
+			Valid: true,
+		}
+	}
+
 	args := db.ShareSecretParams{
 		OwnerEmail:  ownerEmail,
 		TargetEmail: req.TargetEmail,
 		Path:        req.Path,
 		Permission:  req.Permission,
+		SharedUntil: sharedUntil,
 	}
 
 	// Share the secret

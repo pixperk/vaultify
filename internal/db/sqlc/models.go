@@ -28,6 +28,7 @@ type SharingRules struct {
 	Path        string       `json:"path"`
 	Permission  string       `json:"permission"`
 	CreatedAt   sql.NullTime `json:"created_at"`
+	SharedUntil sql.NullTime `json:"shared_until"`
 }
 
 type Users struct {

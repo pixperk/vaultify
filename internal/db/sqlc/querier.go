@@ -19,7 +19,7 @@ type Querier interface {
 	GetPermissions(ctx context.Context, arg GetPermissionsParams) (string, error)
 	GetSecretByPath(ctx context.Context, path string) (Secrets, error)
 	GetSecretsSharedWithMe(ctx context.Context, targetEmail string) ([]GetSecretsSharedWithMeRow, error)
-	GetSharedWith(ctx context.Context, path string) ([]GetSharedWithRow, error)
+	GetSharedWith(ctx context.Context, arg GetSharedWithParams) ([]GetSharedWithRow, error)
 	GetUserByEmail(ctx context.Context, email string) (Users, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (Users, error)
 	ShareSecret(ctx context.Context, arg ShareSecretParams) (SharingRules, error)

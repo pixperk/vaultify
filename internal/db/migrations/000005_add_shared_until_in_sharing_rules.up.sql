@@ -1,0 +1,2 @@
+ALTER TABLE sharing_rules
+ADD COLUMN shared_until TIMESTAMP NULL DEFAULT NULL;

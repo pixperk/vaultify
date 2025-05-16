@@ -7,13 +7,15 @@ package db
 
 import (
 	"context"
+	"database/sql"
 )
 
 const checkIfShared = `-- name: CheckIfShared :one
 SELECT EXISTS (
     SELECT 1
     FROM sharing_rules
-    WHERE path = $1 AND target_email = $2
+    WHERE path = $1 AND target_email = $2 
+    AND (shared_until IS NULL OR shared_until > NOW())
 )
 `
 
@@ -32,7 +34,8 @@ func (q *Queries) CheckIfShared(ctx context.Context, arg CheckIfSharedParams) (b
 const getPermissions = `-- name: GetPermissions :one
 SELECT permission
 FROM sharing_rules
-WHERE path = $1 AND target_email = $2
+WHERE path = $1 AND target_email = $2 
+AND (shared_until IS NULL OR shared_until > NOW())
 `
 
 type GetPermissionsParams struct {
@@ -50,7 +53,8 @@ func (q *Queries) GetPermissions(ctx context.Context, arg GetPermissionsParams) 
 const getSecretsSharedWithMe = `-- name: GetSecretsSharedWithMe :many
 SELECT path, permission, owner_email
 FROM sharing_rules
-WHERE target_email = $1
+WHERE target_email = $1 
+AND (shared_until IS NULL OR shared_until > NOW())
 `
 
 type GetSecretsSharedWithMeRow struct {
@@ -85,16 +89,22 @@ func (q *Queries) GetSecretsSharedWithMe(ctx context.Context, targetEmail string
 const getSharedWith = `-- name: GetSharedWith :many
 SELECT owner_email, target_email 
 FROM sharing_rules
-WHERE path = $1
+WHERE path = $1 AND (shared_until IS NULL OR shared_until > NOW())
+AND target_email != $2
 `
+
+type GetSharedWithParams struct {
+	Path        string `json:"path"`
+	TargetEmail string `json:"target_email"`
+}
 
 type GetSharedWithRow struct {
 	OwnerEmail  string `json:"owner_email"`
 	TargetEmail string `json:"target_email"`
 }
 
-func (q *Queries) GetSharedWith(ctx context.Context, path string) ([]GetSharedWithRow, error) {
-	rows, err := q.db.QueryContext(ctx, getSharedWith, path)
+func (q *Queries) GetSharedWith(ctx context.Context, arg GetSharedWithParams) ([]GetSharedWithRow, error) {
+	rows, err := q.db.QueryContext(ctx, getSharedWith, arg.Path, arg.TargetEmail)
 	if err != nil {
 		return nil, err
 	}
@@ -117,16 +127,17 @@ func (q *Queries) GetSharedWith(ctx context.Context, path string) ([]GetSharedWi
 }
 
 const shareSecret = `-- name: ShareSecret :one
-INSERT INTO sharing_rules (owner_email, target_email, path, permission)
-VALUES ($1, $2, $3, $4)
-RETURNING id, owner_email, target_email, path, permission, created_at
+INSERT INTO sharing_rules (owner_email, target_email, path, permission, shared_until)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, owner_email, target_email, path, permission, created_at, shared_until
 `
 
 type ShareSecretParams struct {
-	OwnerEmail  string `json:"owner_email"`
-	TargetEmail string `json:"target_email"`
-	Path        string `json:"path"`
-	Permission  string `json:"permission"`
+	OwnerEmail  string       `json:"owner_email"`
+	TargetEmail string       `json:"target_email"`
+	Path        string       `json:"path"`
+	Permission  string       `json:"permission"`
+	SharedUntil sql.NullTime `json:"shared_until"`
 }
 
 func (q *Queries) ShareSecret(ctx context.Context, arg ShareSecretParams) (SharingRules, error) {
@@ -135,6 +146,7 @@ func (q *Queries) ShareSecret(ctx context.Context, arg ShareSecretParams) (Shari
 		arg.TargetEmail,
 		arg.Path,
 		arg.Permission,
+		arg.SharedUntil,
 	)
 	var i SharingRules
 	err := row.Scan(
@@ -144,6 +156,7 @@ func (q *Queries) ShareSecret(ctx context.Context, arg ShareSecretParams) (Shari
 		&i.Path,
 		&i.Permission,
 		&i.CreatedAt,
+		&i.SharedUntil,
 	)
 	return i, err
 }
