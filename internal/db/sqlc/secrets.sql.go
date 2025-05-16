@@ -97,3 +97,33 @@ func (q *Queries) GetSecretByPath(ctx context.Context, path string) (Secrets, er
 	)
 	return i, err
 }
+
+const updateSecret = `-- name: UpdateSecret :one
+UPDATE secrets
+SET encrypted_value = $2,
+    nonce = $3,
+    updated_at = NOW()
+WHERE path = $1
+RETURNING id, user_id, path, encrypted_value, nonce, created_at, updated_at
+`
+
+type UpdateSecretParams struct {
+	Path           string `json:"path"`
+	EncryptedValue []byte `json:"encrypted_value"`
+	Nonce          []byte `json:"nonce"`
+}
+
+func (q *Queries) UpdateSecret(ctx context.Context, arg UpdateSecretParams) (Secrets, error) {
+	row := q.db.QueryRowContext(ctx, updateSecret, arg.Path, arg.EncryptedValue, arg.Nonce)
+	var i Secrets
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Path,
+		&i.EncryptedValue,
+		&i.Nonce,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}

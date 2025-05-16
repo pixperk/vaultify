@@ -8,3 +8,11 @@ SELECT * FROM secrets WHERE path = $1;
 
 -- name: GetAllSecretsForUser :many
 SELECT * FROM secrets WHERE user_id = $1;
+
+-- name: UpdateSecret :one
+UPDATE secrets
+SET encrypted_value = $2,
+    nonce = $3,
+    updated_at = NOW()
+WHERE path = $1
+RETURNING *;

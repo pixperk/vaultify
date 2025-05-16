@@ -22,6 +22,7 @@ type Querier interface {
 	GetUserByEmail(ctx context.Context, email string) (Users, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (Users, error)
 	ShareSecret(ctx context.Context, arg ShareSecretParams) (SharingRules, error)
+	UpdateSecret(ctx context.Context, arg UpdateSecretParams) (Secrets, error)
 }
 
 var _ Querier = (*Queries)(nil)
