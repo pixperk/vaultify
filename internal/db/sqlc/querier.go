@@ -11,6 +11,7 @@ import (
 )
 
 type Querier interface {
+	CheckIfShared(ctx context.Context, arg CheckIfSharedParams) (bool, error)
 	CreateSecret(ctx context.Context, arg CreateSecretParams) (Secrets, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (Users, error)
 	GetAllSecretsForUser(ctx context.Context, userID uuid.UUID) ([]Secrets, error)

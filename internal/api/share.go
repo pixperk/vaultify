@@ -46,6 +46,11 @@ func (s *Server) shareSecret(ctx *gin.Context) {
 		return
 	}
 
+	if ownerEmail == req.TargetEmail {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "you cannot share a secret with yourself"})
+		return
+	}
+
 	// Check if the target user exists
 	_, err = s.store.GetUserByEmail(ctx, req.TargetEmail)
 	if err != nil {
@@ -56,17 +61,17 @@ func (s *Server) shareSecret(ctx *gin.Context) {
 	}
 
 	// Check if the target user is already shared
-	targetEmails, err := s.store.GetSecretsSharedWithMe(ctx, req.TargetEmail)
-	if err != nil && err != sql.ErrNoRows {
+	isAlreadyShared, err := s.store.CheckIfShared(ctx, db.CheckIfSharedParams{
+		Path:        req.Path,
+		TargetEmail: req.TargetEmail,
+	})
+	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check if the secret is already shared"})
 		return
 	}
-
-	for _, targetEmail := range targetEmails {
-		if targetEmail.Path == req.Path {
-			ctx.JSON(http.StatusConflict, gin.H{"error": "the secret is already shared with the target user"})
-			return
-		}
+	if isAlreadyShared {
+		ctx.JSON(http.StatusConflict, gin.H{"error": "the secret is already shared with the target user"})
+		return
 	}
 
 	args := db.ShareSecretParams{

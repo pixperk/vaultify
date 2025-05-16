@@ -9,6 +9,26 @@ import (
 	"context"
 )
 
+const checkIfShared = `-- name: CheckIfShared :one
+SELECT EXISTS (
+    SELECT 1
+    FROM sharing_rules
+    WHERE path = $1 AND target_email = $2
+)
+`
+
+type CheckIfSharedParams struct {
+	Path        string `json:"path"`
+	TargetEmail string `json:"target_email"`
+}
+
+func (q *Queries) CheckIfShared(ctx context.Context, arg CheckIfSharedParams) (bool, error) {
+	row := q.db.QueryRowContext(ctx, checkIfShared, arg.Path, arg.TargetEmail)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const getPermissions = `-- name: GetPermissions :one
 SELECT permission
 FROM sharing_rules

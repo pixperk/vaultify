@@ -17,3 +17,10 @@ WHERE path = $1 AND target_email = $2;
 SELECT path, permission, owner_email
 FROM sharing_rules
 WHERE target_email = $1;
+
+-- name: CheckIfShared :one
+SELECT EXISTS (
+    SELECT 1
+    FROM sharing_rules
+    WHERE path = $1 AND target_email = $2
+);
