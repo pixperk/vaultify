@@ -20,6 +20,7 @@ type Server struct {
 }
 
 func NewServer(config *config.Config, store db.Store) (*Server, error) {
+
 	tokenMaker, err := auth.NewPasetoMaker(config.TokenSymmetricKey)
 	if err != nil {
 		return nil, fmt.Errorf("cannot create token maker : %w", err)
@@ -63,6 +64,7 @@ func (s *Server) setupRouter() *gin.Engine {
 }
 
 func (s *Server) Start(address string) error {
+	s.cleanExpiredSecrets(s.config.ExpirationCheckInterval)
 	return http.ListenAndServe(address, s.router)
 }
 

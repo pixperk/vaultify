@@ -7,17 +7,18 @@ import (
 )
 
 type Config struct {
-	Port                string `mapstructure:"PORT"`
-	Env                 string `mapstructure:"ENV"`
-	DbHost              string `mapstructure:"DB_HOST"`
-	DbPort              string `mapstructure:"DB_PORT"`
-	DbUser              string `mapstructure:"DB_USER"`
-	DbPass              string `mapstructure:"DB_PASSWORD"`
-	DbName              string `mapstructure:"DB_NAME"`
-	TokenSymmetricKey   string `mapstructure:"TOKEN_SYMMETRIC_KEY"`
-	SecretsSymmetricKey string `mapstructure:"SECRETS_SYMMETRIC_KEY"`
-	DBSource            string
-	AccessTokenDuration time.Duration `mapstructure:"ACCESS_TOKEN_DURATION"`
+	Port                    string `mapstructure:"PORT"`
+	Env                     string `mapstructure:"ENV"`
+	DbHost                  string `mapstructure:"DB_HOST"`
+	DbPort                  string `mapstructure:"DB_PORT"`
+	DbUser                  string `mapstructure:"DB_USER"`
+	DbPass                  string `mapstructure:"DB_PASSWORD"`
+	DbName                  string `mapstructure:"DB_NAME"`
+	TokenSymmetricKey       string `mapstructure:"TOKEN_SYMMETRIC_KEY"`
+	SecretsSymmetricKey     string `mapstructure:"SECRETS_SYMMETRIC_KEY"`
+	DBSource                string
+	AccessTokenDuration     time.Duration `mapstructure:"ACCESS_TOKEN_DURATION"`
+	ExpirationCheckInterval time.Duration `mapstructure:"EXPIRATION_CHECK_INTERVAL"`
 }
 
 func LoadConfig(path string) (config Config, err error) {

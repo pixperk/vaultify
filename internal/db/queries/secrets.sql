@@ -16,3 +16,8 @@ SET encrypted_value = $2,
     updated_at = NOW()
 WHERE path = $1
 RETURNING *;
+
+-- name: DeleteExpiredSecrets :exec
+DELETE FROM secrets
+WHERE expires_at IS NOT NULL AND expires_at < now();
+

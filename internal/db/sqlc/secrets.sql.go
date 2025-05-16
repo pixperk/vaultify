@@ -48,6 +48,16 @@ func (q *Queries) CreateSecret(ctx context.Context, arg CreateSecretParams) (Sec
 	return i, err
 }
 
+const deleteExpiredSecrets = `-- name: DeleteExpiredSecrets :exec
+DELETE FROM secrets
+WHERE expires_at IS NOT NULL AND expires_at < now()
+`
+
+func (q *Queries) DeleteExpiredSecrets(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, deleteExpiredSecrets)
+	return err
+}
+
 const getAllSecretsForUser = `-- name: GetAllSecretsForUser :many
 SELECT id, user_id, path, encrypted_value, nonce, created_at, updated_at, expires_at FROM secrets WHERE user_id = $1 AND (expires_at IS NULL OR expires_at > now())
 `
