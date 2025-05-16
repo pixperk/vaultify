@@ -1,7 +1,6 @@
 package api
 
 import (
-	"database/sql"
 	"fmt"
 	"net/http"
 	"strings"
@@ -87,43 +86,5 @@ func (s *Server) createSecret(ctx *gin.Context) {
 	}
 
 	ctx.JSON(200, resp)
-
-}
-
-func (s *Server) getSecret(ctx *gin.Context) {
-
-	authPayload := ctx.MustGet(authorizationPayloadKey).(*auth.Payload)
-
-	rawPath := ctx.Param("path")
-	path := strings.TrimPrefix(rawPath, "/") // remove leading slash
-	secret, err := s.store.GetSecretByPath(ctx, path)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			ctx.JSON(http.StatusNotFound, errorResponse(err))
-			return
-		}
-		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
-		return
-	}
-
-	//TODO : Check if secret is shared with the user
-	if secret.UserID != authPayload.UserID {
-		ctx.JSON(http.StatusForbidden, errorResponse(fmt.Errorf("you are not authorized to access this secret")))
-		return
-	}
-
-	// Decrypt the secret value
-	decryptedValue, err := s.encryptor.Decrypt(secret.EncryptedValue, secret.Nonce)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
-		return
-	}
-
-	resp := getSecretResponse{
-		Path:      secret.Path,
-		Decrypted: string(decryptedValue),
-	}
-
-	ctx.JSON(http.StatusOK, resp)
 
 }
