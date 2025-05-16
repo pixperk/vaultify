@@ -7,6 +7,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/pixperk/vaultify/internal/auth"
 	db "github.com/pixperk/vaultify/internal/db/sqlc"
+	"github.com/pixperk/vaultify/internal/logger"
+	"go.uber.org/zap"
 )
 
 type shareSecretRequest struct {
@@ -24,6 +26,8 @@ type shareSecretResponse struct {
 }
 
 func (s *Server) shareSecret(ctx *gin.Context) {
+
+	log := logger.New(s.config.Env)
 	var req shareSecretRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -88,6 +92,11 @@ func (s *Server) shareSecret(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "failed to share the secret"})
 		return
 	}
+
+	log.Info("Secret shared",
+		zap.String("by", ownerEmail),
+		zap.String("with", req.TargetEmail),
+		zap.String("secret_path", secret.Path))
 
 	resp := shareSecretResponse{
 		Success:     true,
