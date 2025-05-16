@@ -59,9 +59,19 @@ func (s *Server) createSecret(ctx *gin.Context) {
 		return
 	}
 
+	//make an array of path string words separated by space
+	pathWords := strings.Fields(req.Path)
+	var path string
+	if len(pathWords) < 2 {
+		path = fmt.Sprintf("%s/%s", user.Email, req.Path)
+	} else {
+		//join the path words with a -
+		path = fmt.Sprintf("%s/%s", user.Email, strings.Join(pathWords, "-"))
+	}
+
 	arg := db.CreateSecretParams{
-		UserID:         authPayload.ID,
-		Path:           fmt.Sprintf("%s/%s", user.Email, req.Path),
+		UserID:         authPayload.UserID,
+		Path:           path,
 		EncryptedValue: encryptedValue,
 		Nonce:          nonce,
 	}
