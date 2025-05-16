@@ -28,3 +28,7 @@ SELECT EXISTS (
     WHERE path = $1 AND target_email = $2 
     AND (shared_until IS NULL OR shared_until > NOW())
 );
+
+-- name: DeleteExpiredSharingRules :exec
+DELETE FROM sharing_rules
+WHERE shared_until IS NOT NULL AND shared_until < NOW();

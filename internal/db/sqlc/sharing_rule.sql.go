@@ -31,6 +31,16 @@ func (q *Queries) CheckIfShared(ctx context.Context, arg CheckIfSharedParams) (b
 	return exists, err
 }
 
+const deleteExpiredSharingRules = `-- name: DeleteExpiredSharingRules :exec
+DELETE FROM sharing_rules
+WHERE shared_until IS NOT NULL AND shared_until < NOW()
+`
+
+func (q *Queries) DeleteExpiredSharingRules(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, deleteExpiredSharingRules)
+	return err
+}
+
 const getPermissions = `-- name: GetPermissions :one
 SELECT permission
 FROM sharing_rules

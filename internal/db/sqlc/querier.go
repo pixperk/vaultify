@@ -15,6 +15,7 @@ type Querier interface {
 	CreateSecret(ctx context.Context, arg CreateSecretParams) (Secrets, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (Users, error)
 	DeleteExpiredSecrets(ctx context.Context) error
+	DeleteExpiredSharingRules(ctx context.Context) error
 	GetAllSecretsForUser(ctx context.Context, userID uuid.UUID) ([]Secrets, error)
 	GetPermissions(ctx context.Context, arg GetPermissionsParams) (string, error)
 	GetSecretByPath(ctx context.Context, path string) (Secrets, error)

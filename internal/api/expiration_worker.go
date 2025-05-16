@@ -2,7 +2,7 @@ package api
 
 import (
 	"context"
-	"fmt"
+	"log"
 	"time"
 )
 
@@ -13,14 +13,18 @@ func (s *Server) cleanExpiredSecrets(interval time.Duration) {
 
 		for range ticker.C {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			err := s.store.DeleteExpiredSecrets(ctx)
+
+			if err := s.store.DeleteExpiredSecrets(ctx); err != nil {
+				log.Printf("Error deleting expired secrets: %v\n", err)
+			}
+
+			if err := s.store.DeleteExpiredSharingRules(ctx); err != nil {
+				log.Printf("Error deleting expired sharing rules: %v\n", err)
+			}
+
 			cancel()
 
-			if err != nil {
-				fmt.Printf("failed to delete expired secrets: %v\n", err)
-			} else {
-				fmt.Println("expired secrets deleted successfully")
-			}
+			log.Println("Expired secrets and sharing rules cleaned up.")
 		}
 	}()
 }
