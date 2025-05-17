@@ -19,6 +19,9 @@ type Config struct {
 	DBSource                string
 	AccessTokenDuration     time.Duration `mapstructure:"ACCESS_TOKEN_DURATION"`
 	ExpirationCheckInterval time.Duration `mapstructure:"EXPIRATION_CHECK_INTERVAL"`
+	RedisAddr               string        `mapstructure:"REDIS_ADDR"`
+	RateLimitTokens         int           `mapstructure:"RATE_LIMIT_TOKENS"`
+	RateLimitRefill         float64       `mapstructure:"RATE_LIMIT_REFILL"`
 }
 
 func LoadConfig(path string) (config Config, err error) {

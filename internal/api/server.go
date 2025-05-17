@@ -3,7 +3,6 @@ package api
 import (
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/pixperk/vaultify/internal/auth"
@@ -55,9 +54,9 @@ func (s *Server) setupRouter() *gin.Engine {
 	r.POST("/sign-up", s.createUser)
 	r.POST("/login", s.loginUser)
 
-	rl := util.NewRateLimiter(5, 10*time.Second)
+	rl := util.NewRateLimiter(s.config.RedisAddr, s.config.RateLimitTokens, s.config.RateLimitRefill)
 
-	authRoutes := r.Group("/secrets").Use(authMiddleware(s.tokenMaker)).Use(rl.Middleware())
+	authRoutes := r.Group("/secrets").Use(rl.Middleware()).Use(authMiddleware(s.tokenMaker))
 	authRoutes.POST("/", s.createSecret)
 	authRoutes.GET("/*path", s.RequireReadAccess(), s.getSecret)
 	authRoutes.PUT("/*path", s.RequireWriteAccess(), s.updateSecret)

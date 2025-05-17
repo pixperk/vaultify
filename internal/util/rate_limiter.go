@@ -1,84 +1,66 @@
 package util
 
 import (
+	"context"
+	"fmt"
 	"net/http"
-	"sync"
+	"os"
 	"time"
 
-	"fmt"
-
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 )
 
-// Limit per IP (or key) struct
-type client struct {
-	Requests int
-	Expiry   time.Time
-}
+var ctx = context.Background()
 
 type RateLimiter struct {
-	clients map[string]*client
-	mu      sync.Mutex
-	limit   int           // max requests allowed
-	window  time.Duration // time window duration
+	client     *redis.Client
+	script     string
+	maxTokens  int
+	refillRate float64
 }
 
-func NewRateLimiter(limit int, window time.Duration) *RateLimiter {
-	rl := &RateLimiter{
-		clients: make(map[string]*client),
-		limit:   limit,
-		window:  window,
+func NewRateLimiter(redisAddr string, maxTokens int, refillRate float64) *RateLimiter {
+	rdb := redis.NewClient(&redis.Options{
+		Addr: redisAddr,
+	})
+	script, err := os.ReadFile("scripts/token_bucket.lua")
+	if err != nil {
+		panic("Could not read Lua script: " + err.Error())
 	}
 
-	// Background goroutine to clean expired clients and avoid memory leak
-	go func() {
-		for {
-			time.Sleep(window)
-			rl.cleanup()
-		}
-	}()
-
-	return rl
-}
-
-func (rl *RateLimiter) cleanup() {
-	rl.mu.Lock()
-	defer rl.mu.Unlock()
-
-	now := time.Now()
-	for key, c := range rl.clients {
-		if now.After(c.Expiry) {
-			delete(rl.clients, key)
-		}
+	return &RateLimiter{
+		client:     rdb,
+		script:     string(script),
+		maxTokens:  maxTokens,
+		refillRate: refillRate,
 	}
 }
 
+// Middleware
 func (rl *RateLimiter) Middleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		key := c.ClientIP() // Use IP as key
+		key := fmt.Sprintf("rate_limit:%s", c.ClientIP())
+		now := float64(time.Now().Unix())
 
-		rl.mu.Lock()
-		defer rl.mu.Unlock()
+		// Call the Lua script to manage the token bucket
+		result, err := rl.client.Eval(ctx, rl.script, []string{key},
+			rl.maxTokens,
+			rl.refillRate,
+			now,
+		).Result()
 
-		now := time.Now()
+		if err != nil {
+			fmt.Println("Redis rate limiter error:", err)
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+			return
+		}
 
-		cl, exists := rl.clients[key]
-		if !exists || now.After(cl.Expiry) {
-			rl.clients[key] = &client{
-				Requests: 1,
-				Expiry:   now.Add(rl.window),
-			}
-		} else {
-			if cl.Requests >= rl.limit {
-				// Rate limit exceeded
-				retryAfter := int(cl.Expiry.Sub(now).Seconds())
-				c.Header("Retry-After", fmt.Sprint(retryAfter))
-				c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
-					"error": "rate limit exceeded",
-				})
-				return
-			}
-			cl.Requests++
+		// Lua returns -1 if rate limit exceeded.
+		tokensLeft := result.(int64)
+		if tokensLeft < 0 {
+			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{"error": "rate limit exceeded"})
+			return
 		}
 
 		c.Next()
