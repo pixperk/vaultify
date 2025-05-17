@@ -18,7 +18,6 @@ type SecretVersions struct {
 	Nonce          []byte        `json:"nonce"`
 	CreatedAt      sql.NullTime  `json:"created_at"`
 	CreatedBy      uuid.NullUUID `json:"created_by"`
-	ExpiresAt      sql.NullTime  `json:"expires_at"`
 }
 
 type Secrets struct {

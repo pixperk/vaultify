@@ -13,16 +13,16 @@ import (
 )
 
 const createNewSecretVersion = `-- name: CreateNewSecretVersion :one
-INSERT INTO secret_versions (secret_id, version, encrypted_value, nonce, created_by, expires_at)
+INSERT INTO secret_versions (secret_id, version, encrypted_value, nonce, created_by)
 SELECT 
   s.id, 
   COALESCE(MAX(sv.version), 0) + 1, 
-  $2, $3, $4, $5
+  $2, $3, $4
 FROM secrets s
 LEFT JOIN secret_versions sv ON s.id = sv.secret_id
 WHERE s.path = $1
 GROUP BY s.id
-RETURNING id, secret_id, version, encrypted_value, nonce, created_at, created_by, expires_at
+RETURNING id, secret_id, version, encrypted_value, nonce, created_at, created_by
 `
 
 type CreateNewSecretVersionParams struct {
@@ -30,7 +30,6 @@ type CreateNewSecretVersionParams struct {
 	EncryptedValue []byte        `json:"encrypted_value"`
 	Nonce          []byte        `json:"nonce"`
 	CreatedBy      uuid.NullUUID `json:"created_by"`
-	ExpiresAt      sql.NullTime  `json:"expires_at"`
 }
 
 func (q *Queries) CreateNewSecretVersion(ctx context.Context, arg CreateNewSecretVersionParams) (SecretVersions, error) {
@@ -39,7 +38,6 @@ func (q *Queries) CreateNewSecretVersion(ctx context.Context, arg CreateNewSecre
 		arg.EncryptedValue,
 		arg.Nonce,
 		arg.CreatedBy,
-		arg.ExpiresAt,
 	)
 	var i SecretVersions
 	err := row.Scan(
@@ -50,39 +48,38 @@ func (q *Queries) CreateNewSecretVersion(ctx context.Context, arg CreateNewSecre
 		&i.Nonce,
 		&i.CreatedAt,
 		&i.CreatedBy,
-		&i.ExpiresAt,
 	)
 	return i, err
 }
 
 const createSecretWithVersion = `-- name: CreateSecretWithVersion :one
 WITH inserted_secret AS (
-    INSERT INTO secrets (user_id, path)
-    VALUES ($1, $2)
+    INSERT INTO secrets (user_id, path, expires_at)
+    VALUES ($1, $2, $3)
     RETURNING id
 )
-INSERT INTO secret_versions (secret_id, version, encrypted_value, nonce, created_by, expires_at)
+INSERT INTO secret_versions (secret_id, version, encrypted_value, nonce, created_by)
 VALUES (
-    (SELECT id FROM inserted_secret), 1, $3, $4, $1, $5
+    (SELECT id FROM inserted_secret), 1, $4, $5, $1
 )
-RETURNING id, secret_id, version, encrypted_value, nonce, created_at, created_by, expires_at
+RETURNING id, secret_id, version, encrypted_value, nonce, created_at, created_by
 `
 
 type CreateSecretWithVersionParams struct {
 	CreatedBy      uuid.NullUUID `json:"created_by"`
 	Path           string        `json:"path"`
+	ExpiresAt      sql.NullTime  `json:"expires_at"`
 	EncryptedValue []byte        `json:"encrypted_value"`
 	Nonce          []byte        `json:"nonce"`
-	ExpiresAt      sql.NullTime  `json:"expires_at"`
 }
 
 func (q *Queries) CreateSecretWithVersion(ctx context.Context, arg CreateSecretWithVersionParams) (SecretVersions, error) {
 	row := q.db.QueryRowContext(ctx, createSecretWithVersion,
 		arg.CreatedBy,
 		arg.Path,
+		arg.ExpiresAt,
 		arg.EncryptedValue,
 		arg.Nonce,
-		arg.ExpiresAt,
 	)
 	var i SecretVersions
 	err := row.Scan(
@@ -93,29 +90,33 @@ func (q *Queries) CreateSecretWithVersion(ctx context.Context, arg CreateSecretW
 		&i.Nonce,
 		&i.CreatedAt,
 		&i.CreatedBy,
-		&i.ExpiresAt,
 	)
 	return i, err
 }
 
-const deleteExpiredSecretVersions = `-- name: DeleteExpiredSecretVersions :exec
+const deleteExpiredSecretAndVersions = `-- name: DeleteExpiredSecretAndVersions :exec
+WITH deleted AS (
+    DELETE FROM secrets
+    WHERE expires_at IS NULL OR expires_at > now()
+    RETURNING id
+)
 DELETE FROM secret_versions
-WHERE expires_at IS NOT NULL AND expires_at < now()
+WHERE secret_id IN (SELECT id FROM deleted)
 `
 
-func (q *Queries) DeleteExpiredSecretVersions(ctx context.Context) error {
-	_, err := q.db.ExecContext(ctx, deleteExpiredSecretVersions)
+func (q *Queries) DeleteExpiredSecretAndVersions(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, deleteExpiredSecretAndVersions)
 	return err
 }
 
 const deleteSecretAndVersionsByPath = `-- name: DeleteSecretAndVersionsByPath :exec
-WITH deleted AS (
+WITH deleted_secret AS (
     DELETE FROM secrets
     WHERE path = $1
     RETURNING id
 )
 DELETE FROM secret_versions
-WHERE secret_id IN (SELECT id FROM deleted)
+WHERE secret_id IN (SELECT id FROM deleted_secret)
 `
 
 func (q *Queries) DeleteSecretAndVersionsByPath(ctx context.Context, path string) error {
@@ -124,7 +125,7 @@ func (q *Queries) DeleteSecretAndVersionsByPath(ctx context.Context, path string
 }
 
 const getAllSecretVersionsByPath = `-- name: GetAllSecretVersionsByPath :many
-SELECT sv.id, sv.secret_id, sv.version, sv.encrypted_value, sv.nonce, sv.created_at, sv.created_by, sv.expires_at
+SELECT sv.id, sv.secret_id, sv.version, sv.encrypted_value, sv.nonce, sv.created_at, sv.created_by
 FROM secrets s
 JOIN secret_versions sv ON s.id = sv.secret_id
 WHERE s.path = $1
@@ -148,7 +149,6 @@ func (q *Queries) GetAllSecretVersionsByPath(ctx context.Context, path string) (
 			&i.Nonce,
 			&i.CreatedAt,
 			&i.CreatedBy,
-			&i.ExpiresAt,
 		); err != nil {
 			return nil, err
 		}
@@ -164,11 +164,11 @@ func (q *Queries) GetAllSecretVersionsByPath(ctx context.Context, path string) (
 }
 
 const getLatestSecretByPath = `-- name: GetLatestSecretByPath :one
-SELECT sv.id, sv.secret_id, sv.version, sv.encrypted_value, sv.nonce, sv.created_at, sv.created_by, sv.expires_at, s.id AS secret_id, s.path
+SELECT sv.id, sv.secret_id, sv.version, sv.encrypted_value, sv.nonce, sv.created_at, sv.created_by, s.id AS secret_id, s.path
 FROM secrets s
 JOIN secret_versions sv ON s.id = sv.secret_id
 WHERE s.path = $1
-  AND (sv.expires_at IS NULL OR sv.expires_at > now())
+  AND (s.expires_at IS NULL OR s.expires_at > now())
 ORDER BY sv.version DESC
 LIMIT 1
 `
@@ -181,7 +181,6 @@ type GetLatestSecretByPathRow struct {
 	Nonce          []byte        `json:"nonce"`
 	CreatedAt      sql.NullTime  `json:"created_at"`
 	CreatedBy      uuid.NullUUID `json:"created_by"`
-	ExpiresAt      sql.NullTime  `json:"expires_at"`
 	SecretID_2     uuid.UUID     `json:"secret_id_2"`
 	Path           string        `json:"path"`
 }
@@ -197,7 +196,6 @@ func (q *Queries) GetLatestSecretByPath(ctx context.Context, path string) (GetLa
 		&i.Nonce,
 		&i.CreatedAt,
 		&i.CreatedBy,
-		&i.ExpiresAt,
 		&i.SecretID_2,
 		&i.Path,
 	)
@@ -205,11 +203,11 @@ func (q *Queries) GetLatestSecretByPath(ctx context.Context, path string) (GetLa
 }
 
 const getLatestSecretsForUser = `-- name: GetLatestSecretsForUser :many
-SELECT DISTINCT ON (s.id) s.id AS secret_id, s.path, sv.version, sv.encrypted_value, sv.nonce, sv.created_at, sv.expires_at
+SELECT DISTINCT ON (s.id) s.id AS secret_id, s.path, sv.version, sv.encrypted_value, sv.nonce, sv.created_at
 FROM secrets s
 JOIN secret_versions sv ON s.id = sv.secret_id
 WHERE s.user_id = $1
-  AND (sv.expires_at IS NULL OR sv.expires_at > now())
+  AND (s.expires_at IS NULL OR s.expires_at > now())
 ORDER BY s.id, sv.version DESC
 `
 
@@ -220,7 +218,6 @@ type GetLatestSecretsForUserRow struct {
 	EncryptedValue []byte       `json:"encrypted_value"`
 	Nonce          []byte       `json:"nonce"`
 	CreatedAt      sql.NullTime `json:"created_at"`
-	ExpiresAt      sql.NullTime `json:"expires_at"`
 }
 
 func (q *Queries) GetLatestSecretsForUser(ctx context.Context, userID uuid.UUID) ([]GetLatestSecretsForUserRow, error) {
@@ -239,7 +236,6 @@ func (q *Queries) GetLatestSecretsForUser(ctx context.Context, userID uuid.UUID)
 			&i.EncryptedValue,
 			&i.Nonce,
 			&i.CreatedAt,
-			&i.ExpiresAt,
 		); err != nil {
 			return nil, err
 		}
@@ -269,7 +265,7 @@ func (q *Queries) GetLatestVersionNumberByPath(ctx context.Context, path string)
 }
 
 const getSecretVersionByPathAndVersion = `-- name: GetSecretVersionByPathAndVersion :one
-SELECT sv.id, sv.secret_id, sv.version, sv.encrypted_value, sv.nonce, sv.created_at, sv.created_by, sv.expires_at, s.id AS secret_id, s.path
+SELECT sv.id, sv.secret_id, sv.version, sv.encrypted_value, sv.nonce, sv.created_at, sv.created_by, s.id AS secret_id, s.path
 FROM secrets s
 JOIN secret_versions sv ON s.id = sv.secret_id
 WHERE s.path = $1 AND sv.version = $2
@@ -288,7 +284,6 @@ type GetSecretVersionByPathAndVersionRow struct {
 	Nonce          []byte        `json:"nonce"`
 	CreatedAt      sql.NullTime  `json:"created_at"`
 	CreatedBy      uuid.NullUUID `json:"created_by"`
-	ExpiresAt      sql.NullTime  `json:"expires_at"`
 	SecretID_2     uuid.UUID     `json:"secret_id_2"`
 	Path           string        `json:"path"`
 }
@@ -304,7 +299,6 @@ func (q *Queries) GetSecretVersionByPathAndVersion(ctx context.Context, arg GetS
 		&i.Nonce,
 		&i.CreatedAt,
 		&i.CreatedBy,
-		&i.ExpiresAt,
 		&i.SecretID_2,
 		&i.Path,
 	)

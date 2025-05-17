@@ -15,7 +15,7 @@ type Querier interface {
 	CreateNewSecretVersion(ctx context.Context, arg CreateNewSecretVersionParams) (SecretVersions, error)
 	CreateSecretWithVersion(ctx context.Context, arg CreateSecretWithVersionParams) (SecretVersions, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (Users, error)
-	DeleteExpiredSecretVersions(ctx context.Context) error
+	DeleteExpiredSecretAndVersions(ctx context.Context) error
 	DeleteExpiredSharingRules(ctx context.Context) error
 	DeleteSecretAndVersionsByPath(ctx context.Context, path string) error
 	GetAllSecretVersionsByPath(ctx context.Context, path string) ([]SecretVersions, error)

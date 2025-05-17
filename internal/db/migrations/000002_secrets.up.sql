@@ -15,7 +15,6 @@ CREATE TABLE secret_versions (
     nonce BYTEA NOT NULL,
     created_at TIMESTAMP DEFAULT now(),
     created_by UUID REFERENCES users(id), -- track who pushed version
-    expires_at TIMESTAMP, 
     UNIQUE(secret_id, version)
 );
 
