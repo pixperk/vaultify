@@ -45,7 +45,7 @@ DELETE FROM secret_versions
 WHERE expires_at IS NOT NULL AND expires_at < now();
 
 -- name: GetSecretVersionByPathAndVersion :one
-SELECT sv.*
+SELECT sv.*, s.id AS secret_id, s.path
 FROM secrets s
 JOIN secret_versions sv ON s.id = sv.secret_id
 WHERE s.path = $1 AND sv.version = $2;

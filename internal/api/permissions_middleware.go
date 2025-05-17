@@ -2,6 +2,7 @@ package api
 
 import (
 	"database/sql"
+	"fmt"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -14,8 +15,38 @@ func (s *Server) RequireReadAccess() gin.HandlerFunc {
 		rawPath := ctx.Param("path")
 		path := strings.TrimPrefix(rawPath, "/") // remove leading slash
 		authPayload := ctx.MustGet(authorizationPayloadKey).(*auth.Payload)
+		var err error
+		var secret db.GetLatestSecretByPathRow
+		//Get the query params for version
+		version := ctx.Query("version")
+		if version == "" {
+			secret, err = s.store.GetLatestSecretByPath(ctx, path)
+		} else {
+			// Parse version string to int32
+			var versionInt int32
+			if _, err := fmt.Sscanf(version, "%d", &versionInt); err != nil {
+				ctx.AbortWithStatusJSON(400, gin.H{"error": "Invalid version format"})
+				return
+			}
 
-		secret, err := s.store.GetLatestSecretByPath(ctx, path)
+			// Get specific version
+			versionSecret, err := s.store.GetSecretVersionByPathAndVersion(ctx, db.GetSecretVersionByPathAndVersionParams{
+				Path:    path,
+				Version: versionInt,
+			})
+			if err != nil {
+				if err == sql.ErrNoRows {
+					ctx.AbortWithStatusJSON(404, gin.H{"error": "Secret version not found"})
+				} else {
+					ctx.AbortWithStatusJSON(500, gin.H{"error": "Error fetching secret version"})
+				}
+				return
+			}
+
+			// Convert to GetLatestSecretByPathRow type using type conversion
+			secret = db.GetLatestSecretByPathRow(versionSecret)
+		}
+
 		if err != nil {
 			if err == sql.ErrNoRows {
 				ctx.AbortWithStatusJSON(404, gin.H{"error": "Secret not found"})

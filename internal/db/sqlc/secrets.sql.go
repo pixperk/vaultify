@@ -269,7 +269,7 @@ func (q *Queries) GetLatestVersionNumberByPath(ctx context.Context, path string)
 }
 
 const getSecretVersionByPathAndVersion = `-- name: GetSecretVersionByPathAndVersion :one
-SELECT sv.id, sv.secret_id, sv.version, sv.encrypted_value, sv.nonce, sv.created_at, sv.created_by, sv.expires_at
+SELECT sv.id, sv.secret_id, sv.version, sv.encrypted_value, sv.nonce, sv.created_at, sv.created_by, sv.expires_at, s.id AS secret_id, s.path
 FROM secrets s
 JOIN secret_versions sv ON s.id = sv.secret_id
 WHERE s.path = $1 AND sv.version = $2
@@ -280,9 +280,22 @@ type GetSecretVersionByPathAndVersionParams struct {
 	Version int32  `json:"version"`
 }
 
-func (q *Queries) GetSecretVersionByPathAndVersion(ctx context.Context, arg GetSecretVersionByPathAndVersionParams) (SecretVersions, error) {
+type GetSecretVersionByPathAndVersionRow struct {
+	ID             uuid.UUID     `json:"id"`
+	SecretID       uuid.UUID     `json:"secret_id"`
+	Version        int32         `json:"version"`
+	EncryptedValue []byte        `json:"encrypted_value"`
+	Nonce          []byte        `json:"nonce"`
+	CreatedAt      sql.NullTime  `json:"created_at"`
+	CreatedBy      uuid.NullUUID `json:"created_by"`
+	ExpiresAt      sql.NullTime  `json:"expires_at"`
+	SecretID_2     uuid.UUID     `json:"secret_id_2"`
+	Path           string        `json:"path"`
+}
+
+func (q *Queries) GetSecretVersionByPathAndVersion(ctx context.Context, arg GetSecretVersionByPathAndVersionParams) (GetSecretVersionByPathAndVersionRow, error) {
 	row := q.db.QueryRowContext(ctx, getSecretVersionByPathAndVersion, arg.Path, arg.Version)
-	var i SecretVersions
+	var i GetSecretVersionByPathAndVersionRow
 	err := row.Scan(
 		&i.ID,
 		&i.SecretID,
@@ -292,6 +305,8 @@ func (q *Queries) GetSecretVersionByPathAndVersion(ctx context.Context, arg GetS
 		&i.CreatedAt,
 		&i.CreatedBy,
 		&i.ExpiresAt,
+		&i.SecretID_2,
+		&i.Path,
 	)
 	return i, err
 }

@@ -23,7 +23,7 @@ type Querier interface {
 	GetLatestSecretsForUser(ctx context.Context, userID uuid.UUID) ([]GetLatestSecretsForUserRow, error)
 	GetLatestVersionNumberByPath(ctx context.Context, path string) (interface{}, error)
 	GetPermissions(ctx context.Context, arg GetPermissionsParams) (string, error)
-	GetSecretVersionByPathAndVersion(ctx context.Context, arg GetSecretVersionByPathAndVersionParams) (SecretVersions, error)
+	GetSecretVersionByPathAndVersion(ctx context.Context, arg GetSecretVersionByPathAndVersionParams) (GetSecretVersionByPathAndVersionRow, error)
 	GetSecretsSharedWithMe(ctx context.Context, targetEmail string) ([]GetSecretsSharedWithMeRow, error)
 	GetSecretsWithVersionCount(ctx context.Context) ([]GetSecretsWithVersionCountRow, error)
 	GetSharedWith(ctx context.Context, arg GetSharedWithParams) ([]GetSharedWithRow, error)
