@@ -57,6 +57,7 @@ func (s *Server) setupRouter() *gin.Engine {
 	authRoutes.POST("/", s.createSecret)
 	authRoutes.GET("/*path", s.RequireReadAccess(), s.getSecret)
 	authRoutes.PUT("/*path", s.RequireWriteAccess(), s.updateSecret)
+	authRoutes.POST("/rollback/*path", s.RequireWriteAccess(), s.rollbackSecret)
 	authRoutes.POST("/share", s.shareSecret)
 
 	return r
