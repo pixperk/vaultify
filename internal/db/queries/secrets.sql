@@ -12,7 +12,7 @@ RETURNING *;
 
 
 -- name: GetLatestSecretByPath :one
-SELECT sv.*, s.id AS secret_id, s.path
+SELECT sv.*, s.id AS secret_id, s.user_id, s.path
 FROM secrets s
 JOIN secret_versions sv ON s.id = sv.secret_id
 WHERE s.path = $1
@@ -44,7 +44,7 @@ RETURNING *;
 
 
 -- name: GetSecretVersionByPathAndVersion :one
-SELECT sv.*, s.id AS secret_id, s.path
+SELECT sv.*, s.id AS secret_id,s.user_id, s.path
 FROM secrets s
 JOIN secret_versions sv ON s.id = sv.secret_id
 WHERE s.path = $1 AND sv.version = $2;
@@ -59,7 +59,7 @@ ORDER BY sv.version DESC;
 -- name: DeleteExpiredSecretAndVersions :exec
 WITH deleted AS (
     DELETE FROM secrets
-    WHERE expires_at IS NULL OR expires_at > now()
+    WHERE expires_at < now()
     RETURNING id
 )
 DELETE FROM secret_versions

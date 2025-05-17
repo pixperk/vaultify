@@ -97,7 +97,7 @@ func (q *Queries) CreateSecretWithVersion(ctx context.Context, arg CreateSecretW
 const deleteExpiredSecretAndVersions = `-- name: DeleteExpiredSecretAndVersions :exec
 WITH deleted AS (
     DELETE FROM secrets
-    WHERE expires_at IS NULL OR expires_at > now()
+    WHERE expires_at < now()
     RETURNING id
 )
 DELETE FROM secret_versions
@@ -164,7 +164,7 @@ func (q *Queries) GetAllSecretVersionsByPath(ctx context.Context, path string) (
 }
 
 const getLatestSecretByPath = `-- name: GetLatestSecretByPath :one
-SELECT sv.id, sv.secret_id, sv.version, sv.encrypted_value, sv.nonce, sv.created_at, sv.created_by, s.id AS secret_id, s.path
+SELECT sv.id, sv.secret_id, sv.version, sv.encrypted_value, sv.nonce, sv.created_at, sv.created_by, s.id AS secret_id, s.user_id, s.path
 FROM secrets s
 JOIN secret_versions sv ON s.id = sv.secret_id
 WHERE s.path = $1
@@ -182,6 +182,7 @@ type GetLatestSecretByPathRow struct {
 	CreatedAt      sql.NullTime  `json:"created_at"`
 	CreatedBy      uuid.NullUUID `json:"created_by"`
 	SecretID_2     uuid.UUID     `json:"secret_id_2"`
+	UserID         uuid.UUID     `json:"user_id"`
 	Path           string        `json:"path"`
 }
 
@@ -197,6 +198,7 @@ func (q *Queries) GetLatestSecretByPath(ctx context.Context, path string) (GetLa
 		&i.CreatedAt,
 		&i.CreatedBy,
 		&i.SecretID_2,
+		&i.UserID,
 		&i.Path,
 	)
 	return i, err
@@ -265,7 +267,7 @@ func (q *Queries) GetLatestVersionNumberByPath(ctx context.Context, path string)
 }
 
 const getSecretVersionByPathAndVersion = `-- name: GetSecretVersionByPathAndVersion :one
-SELECT sv.id, sv.secret_id, sv.version, sv.encrypted_value, sv.nonce, sv.created_at, sv.created_by, s.id AS secret_id, s.path
+SELECT sv.id, sv.secret_id, sv.version, sv.encrypted_value, sv.nonce, sv.created_at, sv.created_by, s.id AS secret_id,s.user_id, s.path
 FROM secrets s
 JOIN secret_versions sv ON s.id = sv.secret_id
 WHERE s.path = $1 AND sv.version = $2
@@ -285,6 +287,7 @@ type GetSecretVersionByPathAndVersionRow struct {
 	CreatedAt      sql.NullTime  `json:"created_at"`
 	CreatedBy      uuid.NullUUID `json:"created_by"`
 	SecretID_2     uuid.UUID     `json:"secret_id_2"`
+	UserID         uuid.UUID     `json:"user_id"`
 	Path           string        `json:"path"`
 }
 
@@ -300,6 +303,7 @@ func (q *Queries) GetSecretVersionByPathAndVersion(ctx context.Context, arg GetS
 		&i.CreatedAt,
 		&i.CreatedBy,
 		&i.SecretID_2,
+		&i.UserID,
 		&i.Path,
 	)
 	return i, err

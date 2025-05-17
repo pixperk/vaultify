@@ -57,7 +57,7 @@ func (s *Server) RequireReadAccess() gin.HandlerFunc {
 		}
 
 		// Check if the user is owner
-		if secret.CreatedBy.UUID == authPayload.UserID {
+		if secret.UserID == authPayload.UserID {
 			ctx.Set("secret", secret)
 			ctx.Next()
 			return
@@ -101,7 +101,7 @@ func (s *Server) RequireWriteAccess() gin.HandlerFunc {
 		}
 
 		// Check if the user is owner
-		if secret.CreatedBy.UUID == authPayload.UserID {
+		if secret.UserID == authPayload.UserID {
 			ctx.Set("secret", secret)
 			ctx.Next()
 			return

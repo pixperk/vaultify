@@ -44,7 +44,7 @@ func (s *Server) shareSecret(ctx *gin.Context) {
 	}
 
 	// Check if the user is the owner of the secret
-	if secret.CreatedBy.UUID != authPayload.UserID {
+	if secret.UserID != authPayload.UserID {
 		ctx.JSON(http.StatusForbidden, gin.H{"error": "you do not have permission to share this secret"})
 		return
 	}
