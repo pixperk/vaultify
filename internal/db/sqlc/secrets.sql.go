@@ -12,73 +12,139 @@ import (
 	"github.com/google/uuid"
 )
 
-const createSecret = `-- name: CreateSecret :one
-INSERT INTO secrets (user_id, path, encrypted_value, nonce, expires_at)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, user_id, path, encrypted_value, nonce, created_at, updated_at, expires_at
+const createNewSecretVersion = `-- name: CreateNewSecretVersion :one
+INSERT INTO secret_versions (secret_id, version, encrypted_value, nonce, created_by, expires_at)
+SELECT id, COALESCE(MAX(version), 0) + 1, $2, $3, $4, $5
+FROM secrets
+LEFT JOIN secret_versions ON secrets.id = secret_versions.secret_id
+WHERE path = $1
+GROUP BY secrets.id
+RETURNING id, secret_id, version, encrypted_value, nonce, created_at, created_by, expires_at
 `
 
-type CreateSecretParams struct {
-	UserID         uuid.UUID    `json:"user_id"`
-	Path           string       `json:"path"`
-	EncryptedValue []byte       `json:"encrypted_value"`
-	Nonce          []byte       `json:"nonce"`
-	ExpiresAt      sql.NullTime `json:"expires_at"`
+type CreateNewSecretVersionParams struct {
+	Path           string        `json:"path"`
+	EncryptedValue []byte        `json:"encrypted_value"`
+	Nonce          []byte        `json:"nonce"`
+	CreatedBy      uuid.NullUUID `json:"created_by"`
+	ExpiresAt      sql.NullTime  `json:"expires_at"`
 }
 
-func (q *Queries) CreateSecret(ctx context.Context, arg CreateSecretParams) (Secrets, error) {
-	row := q.db.QueryRowContext(ctx, createSecret,
-		arg.UserID,
+func (q *Queries) CreateNewSecretVersion(ctx context.Context, arg CreateNewSecretVersionParams) (SecretVersions, error) {
+	row := q.db.QueryRowContext(ctx, createNewSecretVersion,
 		arg.Path,
 		arg.EncryptedValue,
 		arg.Nonce,
+		arg.CreatedBy,
 		arg.ExpiresAt,
 	)
-	var i Secrets
+	var i SecretVersions
 	err := row.Scan(
 		&i.ID,
-		&i.UserID,
-		&i.Path,
+		&i.SecretID,
+		&i.Version,
 		&i.EncryptedValue,
 		&i.Nonce,
 		&i.CreatedAt,
-		&i.UpdatedAt,
+		&i.CreatedBy,
 		&i.ExpiresAt,
 	)
 	return i, err
 }
 
-const deleteExpiredSecrets = `-- name: DeleteExpiredSecrets :exec
-DELETE FROM secrets
+const createSecretWithVersion = `-- name: CreateSecretWithVersion :one
+WITH inserted_secret AS (
+    INSERT INTO secrets (user_id, path)
+    VALUES ($1, $2)
+    RETURNING id
+)
+INSERT INTO secret_versions (secret_id, version, encrypted_value, nonce, created_by, expires_at)
+VALUES (
+    (SELECT id FROM inserted_secret), 1, $3, $4, $1, $5
+)
+RETURNING id, secret_id, version, encrypted_value, nonce, created_at, created_by, expires_at
+`
+
+type CreateSecretWithVersionParams struct {
+	CreatedBy      uuid.NullUUID `json:"created_by"`
+	Path           string        `json:"path"`
+	EncryptedValue []byte        `json:"encrypted_value"`
+	Nonce          []byte        `json:"nonce"`
+	ExpiresAt      sql.NullTime  `json:"expires_at"`
+}
+
+func (q *Queries) CreateSecretWithVersion(ctx context.Context, arg CreateSecretWithVersionParams) (SecretVersions, error) {
+	row := q.db.QueryRowContext(ctx, createSecretWithVersion,
+		arg.CreatedBy,
+		arg.Path,
+		arg.EncryptedValue,
+		arg.Nonce,
+		arg.ExpiresAt,
+	)
+	var i SecretVersions
+	err := row.Scan(
+		&i.ID,
+		&i.SecretID,
+		&i.Version,
+		&i.EncryptedValue,
+		&i.Nonce,
+		&i.CreatedAt,
+		&i.CreatedBy,
+		&i.ExpiresAt,
+	)
+	return i, err
+}
+
+const deleteExpiredSecretVersions = `-- name: DeleteExpiredSecretVersions :exec
+DELETE FROM secret_versions
 WHERE expires_at IS NOT NULL AND expires_at < now()
 `
 
-func (q *Queries) DeleteExpiredSecrets(ctx context.Context) error {
-	_, err := q.db.ExecContext(ctx, deleteExpiredSecrets)
+func (q *Queries) DeleteExpiredSecretVersions(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, deleteExpiredSecretVersions)
 	return err
 }
 
-const getAllSecretsForUser = `-- name: GetAllSecretsForUser :many
-SELECT id, user_id, path, encrypted_value, nonce, created_at, updated_at, expires_at FROM secrets WHERE user_id = $1 AND (expires_at IS NULL OR expires_at > now())
+const deleteSecretAndVersionsByPath = `-- name: DeleteSecretAndVersionsByPath :exec
+WITH deleted AS (
+    DELETE FROM secrets
+    WHERE path = $1
+    RETURNING id
+)
+DELETE FROM secret_versions
+WHERE secret_id IN (SELECT id FROM deleted)
 `
 
-func (q *Queries) GetAllSecretsForUser(ctx context.Context, userID uuid.UUID) ([]Secrets, error) {
-	rows, err := q.db.QueryContext(ctx, getAllSecretsForUser, userID)
+func (q *Queries) DeleteSecretAndVersionsByPath(ctx context.Context, path string) error {
+	_, err := q.db.ExecContext(ctx, deleteSecretAndVersionsByPath, path)
+	return err
+}
+
+const getAllSecretVersionsByPath = `-- name: GetAllSecretVersionsByPath :many
+SELECT sv.id, sv.secret_id, sv.version, sv.encrypted_value, sv.nonce, sv.created_at, sv.created_by, sv.expires_at
+FROM secrets s
+JOIN secret_versions sv ON s.id = sv.secret_id
+WHERE s.path = $1
+ORDER BY sv.version DESC
+`
+
+func (q *Queries) GetAllSecretVersionsByPath(ctx context.Context, path string) ([]SecretVersions, error) {
+	rows, err := q.db.QueryContext(ctx, getAllSecretVersionsByPath, path)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Secrets{}
+	items := []SecretVersions{}
 	for rows.Next() {
-		var i Secrets
+		var i SecretVersions
 		if err := rows.Scan(
 			&i.ID,
-			&i.UserID,
-			&i.Path,
+			&i.SecretID,
+			&i.Version,
 			&i.EncryptedValue,
 			&i.Nonce,
 			&i.CreatedAt,
-			&i.UpdatedAt,
+			&i.CreatedBy,
 			&i.ExpiresAt,
 		); err != nil {
 			return nil, err
@@ -94,53 +160,157 @@ func (q *Queries) GetAllSecretsForUser(ctx context.Context, userID uuid.UUID) ([
 	return items, nil
 }
 
-const getSecretByPath = `-- name: GetSecretByPath :one
-SELECT id, user_id, path, encrypted_value, nonce, created_at, updated_at, expires_at FROM secrets WHERE path = $1 AND (expires_at IS NULL OR expires_at > now())
+const getLatestSecretByPath = `-- name: GetLatestSecretByPath :one
+SELECT sv.id, sv.secret_id, sv.version, sv.encrypted_value, sv.nonce, sv.created_at, sv.created_by, sv.expires_at
+FROM secrets s
+JOIN secret_versions sv ON s.id = sv.secret_id
+WHERE s.path = $1
+  AND (sv.expires_at IS NULL OR sv.expires_at > now())
+ORDER BY sv.version DESC
+LIMIT 1
 `
 
-func (q *Queries) GetSecretByPath(ctx context.Context, path string) (Secrets, error) {
-	row := q.db.QueryRowContext(ctx, getSecretByPath, path)
-	var i Secrets
+func (q *Queries) GetLatestSecretByPath(ctx context.Context, path string) (SecretVersions, error) {
+	row := q.db.QueryRowContext(ctx, getLatestSecretByPath, path)
+	var i SecretVersions
 	err := row.Scan(
 		&i.ID,
-		&i.UserID,
-		&i.Path,
+		&i.SecretID,
+		&i.Version,
 		&i.EncryptedValue,
 		&i.Nonce,
 		&i.CreatedAt,
-		&i.UpdatedAt,
+		&i.CreatedBy,
 		&i.ExpiresAt,
 	)
 	return i, err
 }
 
-const updateSecret = `-- name: UpdateSecret :one
-UPDATE secrets
-SET encrypted_value = $2,
-    nonce = $3,
-    updated_at = NOW()
-WHERE path = $1
-RETURNING id, user_id, path, encrypted_value, nonce, created_at, updated_at, expires_at
+const getLatestSecretsForUser = `-- name: GetLatestSecretsForUser :many
+SELECT DISTINCT ON (s.id) s.id AS secret_id, s.path, sv.version, sv.encrypted_value, sv.nonce, sv.created_at, sv.expires_at
+FROM secrets s
+JOIN secret_versions sv ON s.id = sv.secret_id
+WHERE s.user_id = $1
+  AND (sv.expires_at IS NULL OR sv.expires_at > now())
+ORDER BY s.id, sv.version DESC
 `
 
-type UpdateSecretParams struct {
-	Path           string `json:"path"`
-	EncryptedValue []byte `json:"encrypted_value"`
-	Nonce          []byte `json:"nonce"`
+type GetLatestSecretsForUserRow struct {
+	SecretID       uuid.UUID    `json:"secret_id"`
+	Path           string       `json:"path"`
+	Version        int32        `json:"version"`
+	EncryptedValue []byte       `json:"encrypted_value"`
+	Nonce          []byte       `json:"nonce"`
+	CreatedAt      sql.NullTime `json:"created_at"`
+	ExpiresAt      sql.NullTime `json:"expires_at"`
 }
 
-func (q *Queries) UpdateSecret(ctx context.Context, arg UpdateSecretParams) (Secrets, error) {
-	row := q.db.QueryRowContext(ctx, updateSecret, arg.Path, arg.EncryptedValue, arg.Nonce)
-	var i Secrets
+func (q *Queries) GetLatestSecretsForUser(ctx context.Context, userID uuid.UUID) ([]GetLatestSecretsForUserRow, error) {
+	rows, err := q.db.QueryContext(ctx, getLatestSecretsForUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetLatestSecretsForUserRow{}
+	for rows.Next() {
+		var i GetLatestSecretsForUserRow
+		if err := rows.Scan(
+			&i.SecretID,
+			&i.Path,
+			&i.Version,
+			&i.EncryptedValue,
+			&i.Nonce,
+			&i.CreatedAt,
+			&i.ExpiresAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getLatestVersionNumberByPath = `-- name: GetLatestVersionNumberByPath :one
+SELECT COALESCE(MAX(sv.version), 0) AS latest_version
+FROM secrets s
+LEFT JOIN secret_versions sv ON s.id = sv.secret_id
+WHERE s.path = $1
+`
+
+func (q *Queries) GetLatestVersionNumberByPath(ctx context.Context, path string) (interface{}, error) {
+	row := q.db.QueryRowContext(ctx, getLatestVersionNumberByPath, path)
+	var latest_version interface{}
+	err := row.Scan(&latest_version)
+	return latest_version, err
+}
+
+const getSecretVersionByPathAndVersion = `-- name: GetSecretVersionByPathAndVersion :one
+SELECT sv.id, sv.secret_id, sv.version, sv.encrypted_value, sv.nonce, sv.created_at, sv.created_by, sv.expires_at
+FROM secrets s
+JOIN secret_versions sv ON s.id = sv.secret_id
+WHERE s.path = $1 AND sv.version = $2
+`
+
+type GetSecretVersionByPathAndVersionParams struct {
+	Path    string `json:"path"`
+	Version int32  `json:"version"`
+}
+
+func (q *Queries) GetSecretVersionByPathAndVersion(ctx context.Context, arg GetSecretVersionByPathAndVersionParams) (SecretVersions, error) {
+	row := q.db.QueryRowContext(ctx, getSecretVersionByPathAndVersion, arg.Path, arg.Version)
+	var i SecretVersions
 	err := row.Scan(
 		&i.ID,
-		&i.UserID,
-		&i.Path,
+		&i.SecretID,
+		&i.Version,
 		&i.EncryptedValue,
 		&i.Nonce,
 		&i.CreatedAt,
-		&i.UpdatedAt,
+		&i.CreatedBy,
 		&i.ExpiresAt,
 	)
 	return i, err
+}
+
+const getSecretsWithVersionCount = `-- name: GetSecretsWithVersionCount :many
+SELECT s.id, s.path, COUNT(sv.id) AS version_count
+FROM secrets s
+LEFT JOIN secret_versions sv ON s.id = sv.secret_id
+GROUP BY s.id, s.path
+ORDER BY version_count DESC
+`
+
+type GetSecretsWithVersionCountRow struct {
+	ID           uuid.UUID `json:"id"`
+	Path         string    `json:"path"`
+	VersionCount int64     `json:"version_count"`
+}
+
+func (q *Queries) GetSecretsWithVersionCount(ctx context.Context) ([]GetSecretsWithVersionCountRow, error) {
+	rows, err := q.db.QueryContext(ctx, getSecretsWithVersionCount)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetSecretsWithVersionCountRow{}
+	for rows.Next() {
+		var i GetSecretsWithVersionCountRow
+		if err := rows.Scan(&i.ID, &i.Path, &i.VersionCount); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

@@ -10,15 +10,24 @@ import (
 	"github.com/google/uuid"
 )
 
+type SecretVersions struct {
+	ID             uuid.UUID     `json:"id"`
+	SecretID       uuid.UUID     `json:"secret_id"`
+	Version        int32         `json:"version"`
+	EncryptedValue []byte        `json:"encrypted_value"`
+	Nonce          []byte        `json:"nonce"`
+	CreatedAt      sql.NullTime  `json:"created_at"`
+	CreatedBy      uuid.NullUUID `json:"created_by"`
+	ExpiresAt      sql.NullTime  `json:"expires_at"`
+}
+
 type Secrets struct {
-	ID             uuid.UUID    `json:"id"`
-	UserID         uuid.UUID    `json:"user_id"`
-	Path           string       `json:"path"`
-	EncryptedValue []byte       `json:"encrypted_value"`
-	Nonce          []byte       `json:"nonce"`
-	CreatedAt      sql.NullTime `json:"created_at"`
-	UpdatedAt      sql.NullTime `json:"updated_at"`
-	ExpiresAt      sql.NullTime `json:"expires_at"`
+	ID        uuid.UUID    `json:"id"`
+	UserID    uuid.UUID    `json:"user_id"`
+	Path      string       `json:"path"`
+	CreatedAt sql.NullTime `json:"created_at"`
+	UpdatedAt sql.NullTime `json:"updated_at"`
+	ExpiresAt sql.NullTime `json:"expires_at"`
 }
 
 type SharingRules struct {

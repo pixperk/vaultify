@@ -12,19 +12,24 @@ import (
 
 type Querier interface {
 	CheckIfShared(ctx context.Context, arg CheckIfSharedParams) (bool, error)
-	CreateSecret(ctx context.Context, arg CreateSecretParams) (Secrets, error)
+	CreateNewSecretVersion(ctx context.Context, arg CreateNewSecretVersionParams) (SecretVersions, error)
+	CreateSecretWithVersion(ctx context.Context, arg CreateSecretWithVersionParams) (SecretVersions, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (Users, error)
-	DeleteExpiredSecrets(ctx context.Context) error
+	DeleteExpiredSecretVersions(ctx context.Context) error
 	DeleteExpiredSharingRules(ctx context.Context) error
-	GetAllSecretsForUser(ctx context.Context, userID uuid.UUID) ([]Secrets, error)
+	DeleteSecretAndVersionsByPath(ctx context.Context, path string) error
+	GetAllSecretVersionsByPath(ctx context.Context, path string) ([]SecretVersions, error)
+	GetLatestSecretByPath(ctx context.Context, path string) (SecretVersions, error)
+	GetLatestSecretsForUser(ctx context.Context, userID uuid.UUID) ([]GetLatestSecretsForUserRow, error)
+	GetLatestVersionNumberByPath(ctx context.Context, path string) (interface{}, error)
 	GetPermissions(ctx context.Context, arg GetPermissionsParams) (string, error)
-	GetSecretByPath(ctx context.Context, path string) (Secrets, error)
+	GetSecretVersionByPathAndVersion(ctx context.Context, arg GetSecretVersionByPathAndVersionParams) (SecretVersions, error)
 	GetSecretsSharedWithMe(ctx context.Context, targetEmail string) ([]GetSecretsSharedWithMeRow, error)
+	GetSecretsWithVersionCount(ctx context.Context) ([]GetSecretsWithVersionCountRow, error)
 	GetSharedWith(ctx context.Context, arg GetSharedWithParams) ([]GetSharedWithRow, error)
 	GetUserByEmail(ctx context.Context, email string) (Users, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (Users, error)
 	ShareSecret(ctx context.Context, arg ShareSecretParams) (SharingRules, error)
-	UpdateSecret(ctx context.Context, arg UpdateSecretParams) (Secrets, error)
 }
 
 var _ Querier = (*Queries)(nil)
