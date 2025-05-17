@@ -19,7 +19,7 @@ type Querier interface {
 	DeleteExpiredSharingRules(ctx context.Context) error
 	DeleteSecretAndVersionsByPath(ctx context.Context, path string) error
 	GetAllSecretVersionsByPath(ctx context.Context, path string) ([]SecretVersions, error)
-	GetLatestSecretByPath(ctx context.Context, path string) (SecretVersions, error)
+	GetLatestSecretByPath(ctx context.Context, path string) (GetLatestSecretByPathRow, error)
 	GetLatestSecretsForUser(ctx context.Context, userID uuid.UUID) ([]GetLatestSecretsForUserRow, error)
 	GetLatestVersionNumberByPath(ctx context.Context, path string) (interface{}, error)
 	GetPermissions(ctx context.Context, arg GetPermissionsParams) (string, error)

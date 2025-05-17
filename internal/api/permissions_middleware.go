@@ -15,7 +15,7 @@ func (s *Server) RequireReadAccess() gin.HandlerFunc {
 		path := strings.TrimPrefix(rawPath, "/") // remove leading slash
 		authPayload := ctx.MustGet(authorizationPayloadKey).(*auth.Payload)
 
-		secret, err := s.store.GetSecretByPath(ctx, path)
+		secret, err := s.store.GetLatestSecretByPath(ctx, path)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				ctx.AbortWithStatusJSON(404, gin.H{"error": "Secret not found"})
@@ -26,7 +26,7 @@ func (s *Server) RequireReadAccess() gin.HandlerFunc {
 		}
 
 		// Check if the user is owner
-		if secret.UserID == authPayload.UserID {
+		if secret.CreatedBy.UUID == authPayload.UserID {
 			ctx.Set("secret", secret)
 			ctx.Next()
 			return
@@ -59,7 +59,7 @@ func (s *Server) RequireWriteAccess() gin.HandlerFunc {
 		path := strings.TrimPrefix(rawPath, "/") // remove leading slash
 		authPayload := ctx.MustGet(authorizationPayloadKey).(*auth.Payload)
 
-		secret, err := s.store.GetSecretByPath(ctx, path)
+		secret, err := s.store.GetLatestSecretByPath(ctx, path)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				ctx.AbortWithStatusJSON(404, gin.H{"error": "Secret not found"})
@@ -70,7 +70,7 @@ func (s *Server) RequireWriteAccess() gin.HandlerFunc {
 		}
 
 		// Check if the user is owner
-		if secret.UserID == authPayload.UserID {
+		if secret.CreatedBy.UUID == authPayload.UserID {
 			ctx.Set("secret", secret)
 			ctx.Next()
 			return

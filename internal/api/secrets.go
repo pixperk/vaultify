@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/lib/pq"
 	"github.com/pixperk/vaultify/internal/auth"
 	db "github.com/pixperk/vaultify/internal/db/sqlc"
@@ -23,11 +24,6 @@ type secretResponse struct {
 	Path      string `json:"path"`
 	Encrypted []byte `json:"encrypted_value"`
 	Nonce     []byte `json:"nonce"`
-}
-
-type getSecretResponse struct {
-	Path      string `json:"path"`
-	Decrypted string `json:"decrypted_value"`
 }
 
 func (s *Server) createSecret(ctx *gin.Context) {
@@ -69,15 +65,18 @@ func (s *Server) createSecret(ctx *gin.Context) {
 		path = fmt.Sprintf("%s/%s", authPayload.Email, strings.Join(pathWords, "-"))
 	}
 
-	arg := db.CreateSecretParams{
-		UserID:         authPayload.UserID,
+	arg := db.CreateSecretWithVersionParams{
+		CreatedBy: uuid.NullUUID{
+			UUID:  authPayload.UserID,
+			Valid: true,
+		},
 		Path:           path,
 		EncryptedValue: encryptedValue,
 		Nonce:          nonce,
 		ExpiresAt:      expiresAt,
 	}
 
-	secret, err := s.store.CreateSecret(ctx, arg)
+	secret, err := s.store.CreateSecretWithVersion(ctx, arg)
 
 	if err != nil {
 		if pqErr, ok := err.(*pq.Error); ok {

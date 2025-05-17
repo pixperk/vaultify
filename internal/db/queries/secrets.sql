@@ -11,7 +11,7 @@ VALUES (
 RETURNING *;
 
 -- name: GetLatestSecretByPath :one
-SELECT sv.*
+SELECT sv.*, s.id AS secret_id, s.path
 FROM secrets s
 JOIN secret_versions sv ON s.id = sv.secret_id
 WHERE s.path = $1
@@ -29,12 +29,16 @@ ORDER BY s.id, sv.version DESC;
 
 -- name: CreateNewSecretVersion :one
 INSERT INTO secret_versions (secret_id, version, encrypted_value, nonce, created_by, expires_at)
-SELECT id, COALESCE(MAX(version), 0) + 1, $2, $3, $4, $5
-FROM secrets
-LEFT JOIN secret_versions ON secrets.id = secret_versions.secret_id
-WHERE path = $1
-GROUP BY secrets.id
+SELECT 
+  s.id, 
+  COALESCE(MAX(sv.version), 0) + 1, 
+  $2, $3, $4, $5
+FROM secrets s
+LEFT JOIN secret_versions sv ON s.id = sv.secret_id
+WHERE s.path = $1
+GROUP BY s.id
 RETURNING *;
+
 
 -- name: DeleteExpiredSecretVersions :exec
 DELETE FROM secret_versions

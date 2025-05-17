@@ -8,8 +8,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/pixperk/vaultify/internal/auth"
 	db "github.com/pixperk/vaultify/internal/db/sqlc"
-	"github.com/pixperk/vaultify/internal/logger"
-	"go.uber.org/zap"
 )
 
 type shareSecretRequest struct {
@@ -29,7 +27,6 @@ type shareSecretResponse struct {
 
 func (s *Server) shareSecret(ctx *gin.Context) {
 
-	log := logger.New(s.config.Env)
 	var req shareSecretRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -38,7 +35,7 @@ func (s *Server) shareSecret(ctx *gin.Context) {
 	authPayload := ctx.MustGet(authorizationPayloadKey).(*auth.Payload)
 	ownerEmail := authPayload.Email
 	// Check if the secret exists
-	secret, err := s.store.GetSecretByPath(ctx, req.Path)
+	secret, err := s.store.GetLatestSecretByPath(ctx, req.Path)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			ctx.JSON(http.StatusNotFound, gin.H{"error": "the secret does not exist"})
@@ -47,7 +44,7 @@ func (s *Server) shareSecret(ctx *gin.Context) {
 	}
 
 	// Check if the user is the owner of the secret
-	if secret.UserID != authPayload.UserID {
+	if secret.CreatedBy.UUID != authPayload.UserID {
 		ctx.JSON(http.StatusForbidden, gin.H{"error": "you do not have permission to share this secret"})
 		return
 	}
@@ -104,10 +101,10 @@ func (s *Server) shareSecret(ctx *gin.Context) {
 		return
 	}
 
-	log.Info("Secret shared",
-		zap.String("by", ownerEmail),
-		zap.String("with", req.TargetEmail),
-		zap.String("secret_path", secret.Path))
+	/* log.Info("Secret shared",
+	zap.String("by", ownerEmail),
+	zap.String("with", req.TargetEmail),
+	zap.String("secret_path", )) */
 
 	resp := shareSecretResponse{
 		Success:     true,

@@ -14,11 +14,14 @@ import (
 
 const createNewSecretVersion = `-- name: CreateNewSecretVersion :one
 INSERT INTO secret_versions (secret_id, version, encrypted_value, nonce, created_by, expires_at)
-SELECT id, COALESCE(MAX(version), 0) + 1, $2, $3, $4, $5
-FROM secrets
-LEFT JOIN secret_versions ON secrets.id = secret_versions.secret_id
-WHERE path = $1
-GROUP BY secrets.id
+SELECT 
+  s.id, 
+  COALESCE(MAX(sv.version), 0) + 1, 
+  $2, $3, $4, $5
+FROM secrets s
+LEFT JOIN secret_versions sv ON s.id = sv.secret_id
+WHERE s.path = $1
+GROUP BY s.id
 RETURNING id, secret_id, version, encrypted_value, nonce, created_at, created_by, expires_at
 `
 
@@ -161,7 +164,7 @@ func (q *Queries) GetAllSecretVersionsByPath(ctx context.Context, path string) (
 }
 
 const getLatestSecretByPath = `-- name: GetLatestSecretByPath :one
-SELECT sv.id, sv.secret_id, sv.version, sv.encrypted_value, sv.nonce, sv.created_at, sv.created_by, sv.expires_at
+SELECT sv.id, sv.secret_id, sv.version, sv.encrypted_value, sv.nonce, sv.created_at, sv.created_by, sv.expires_at, s.id AS secret_id, s.path
 FROM secrets s
 JOIN secret_versions sv ON s.id = sv.secret_id
 WHERE s.path = $1
@@ -170,9 +173,22 @@ ORDER BY sv.version DESC
 LIMIT 1
 `
 
-func (q *Queries) GetLatestSecretByPath(ctx context.Context, path string) (SecretVersions, error) {
+type GetLatestSecretByPathRow struct {
+	ID             uuid.UUID     `json:"id"`
+	SecretID       uuid.UUID     `json:"secret_id"`
+	Version        int32         `json:"version"`
+	EncryptedValue []byte        `json:"encrypted_value"`
+	Nonce          []byte        `json:"nonce"`
+	CreatedAt      sql.NullTime  `json:"created_at"`
+	CreatedBy      uuid.NullUUID `json:"created_by"`
+	ExpiresAt      sql.NullTime  `json:"expires_at"`
+	SecretID_2     uuid.UUID     `json:"secret_id_2"`
+	Path           string        `json:"path"`
+}
+
+func (q *Queries) GetLatestSecretByPath(ctx context.Context, path string) (GetLatestSecretByPathRow, error) {
 	row := q.db.QueryRowContext(ctx, getLatestSecretByPath, path)
-	var i SecretVersions
+	var i GetLatestSecretByPathRow
 	err := row.Scan(
 		&i.ID,
 		&i.SecretID,
@@ -182,6 +198,8 @@ func (q *Queries) GetLatestSecretByPath(ctx context.Context, path string) (Secre
 		&i.CreatedAt,
 		&i.CreatedBy,
 		&i.ExpiresAt,
+		&i.SecretID_2,
+		&i.Path,
 	)
 	return i, err
 }

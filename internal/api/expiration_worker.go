@@ -14,7 +14,7 @@ func (s *Server) cleanExpiredSecrets(interval time.Duration) {
 		for range ticker.C {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 
-			if err := s.store.DeleteExpiredSecrets(ctx); err != nil {
+			if err := s.store.DeleteExpiredSecretVersions(ctx); err != nil {
 				log.Printf("Error deleting expired secrets: %v\n", err)
 			}
 
