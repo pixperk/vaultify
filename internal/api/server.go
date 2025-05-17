@@ -3,12 +3,14 @@ package api
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/pixperk/vaultify/internal/auth"
 	"github.com/pixperk/vaultify/internal/config"
 	db "github.com/pixperk/vaultify/internal/db/sqlc"
 	"github.com/pixperk/vaultify/internal/secrets"
+	"github.com/pixperk/vaultify/internal/util"
 )
 
 type Server struct {
@@ -53,7 +55,9 @@ func (s *Server) setupRouter() *gin.Engine {
 	r.POST("/sign-up", s.createUser)
 	r.POST("/login", s.loginUser)
 
-	authRoutes := r.Group("/secrets").Use(authMiddleware(s.tokenMaker))
+	rl := util.NewRateLimiter(5, 10*time.Second)
+
+	authRoutes := r.Group("/secrets").Use(authMiddleware(s.tokenMaker)).Use(rl.Middleware())
 	authRoutes.POST("/", s.createSecret)
 	authRoutes.GET("/*path", s.RequireReadAccess(), s.getSecret)
 	authRoutes.PUT("/*path", s.RequireWriteAccess(), s.updateSecret)
