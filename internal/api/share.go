@@ -2,6 +2,7 @@ package api
 
 import (
 	"database/sql"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -92,19 +93,24 @@ func (s *Server) shareSecret(ctx *gin.Context) {
 		Permission:  req.Permission,
 		SharedUntil: sharedUntil,
 	}
+	var sharedSecret db.SharingRules
+	s.store.ExecTx(ctx, func(q *db.Queries) error {
+		sharedSecret, err = s.store.ShareSecret(ctx, args)
+		if err != nil {
+			return err
+		}
 
-	// Share the secret
-	sharedSecret, err := s.store.ShareSecret(ctx, args)
+		// Log the action
+		if err = s.auditSvc.LogTx(ctx, q, authPayload.UserID, authPayload.Email, "share_secret", secret.Path, secret.Version, true, nil); err != nil {
+			return fmt.Errorf("failed to log action: %w", err)
+		}
+		return nil
+	})
 
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "failed to share the secret"})
 		return
 	}
-
-	/* log.Info("Secret shared",
-	zap.String("by", ownerEmail),
-	zap.String("with", req.TargetEmail),
-	zap.String("secret_path", )) */
 
 	resp := shareSecretResponse{
 		Success:     true,
