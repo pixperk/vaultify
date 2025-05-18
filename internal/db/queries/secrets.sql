@@ -4,11 +4,16 @@ WITH inserted_secret AS (
     VALUES ($1, $2, $3)
     RETURNING id
 )
-INSERT INTO secret_versions (secret_id, version, encrypted_value, nonce, created_by)
+INSERT INTO secret_versions (
+    secret_id, version, encrypted_value, nonce, created_by,
+    hmac_signature, hmac_key_id
+)
 VALUES (
-    (SELECT id FROM inserted_secret), 1, $4, $5, $1
+    (SELECT id FROM inserted_secret), 1, $4, $5, $1,
+    $6, $7
 )
 RETURNING *;
+
 
 
 -- name: GetLatestSecretByPath :one

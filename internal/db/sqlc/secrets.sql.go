@@ -71,9 +71,13 @@ WITH inserted_secret AS (
     VALUES ($1, $2, $3)
     RETURNING id
 )
-INSERT INTO secret_versions (secret_id, version, encrypted_value, nonce, created_by)
+INSERT INTO secret_versions (
+    secret_id, version, encrypted_value, nonce, created_by,
+    hmac_signature, hmac_key_id
+)
 VALUES (
-    (SELECT id FROM inserted_secret), 1, $4, $5, $1
+    (SELECT id FROM inserted_secret), 1, $4, $5, $1,
+    $6, $7
 )
 RETURNING id, secret_id, version, encrypted_value, nonce, created_at, created_by, hmac_signature, hmac_key_id
 `
@@ -84,6 +88,8 @@ type CreateSecretWithVersionParams struct {
 	ExpiresAt      sql.NullTime  `json:"expires_at"`
 	EncryptedValue []byte        `json:"encrypted_value"`
 	Nonce          []byte        `json:"nonce"`
+	HmacSignature  []byte        `json:"hmac_signature"`
+	HmacKeyID      uuid.NullUUID `json:"hmac_key_id"`
 }
 
 func (q *Queries) CreateSecretWithVersion(ctx context.Context, arg CreateSecretWithVersionParams) (SecretVersions, error) {
@@ -93,6 +99,8 @@ func (q *Queries) CreateSecretWithVersion(ctx context.Context, arg CreateSecretW
 		arg.ExpiresAt,
 		arg.EncryptedValue,
 		arg.Nonce,
+		arg.HmacSignature,
+		arg.HmacKeyID,
 	)
 	var i SecretVersions
 	err := row.Scan(
