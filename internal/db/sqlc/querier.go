@@ -15,20 +15,24 @@ type Querier interface {
 	CreateNewSecretVersion(ctx context.Context, arg CreateNewSecretVersionParams) (SecretVersions, error)
 	CreateSecretWithVersion(ctx context.Context, arg CreateSecretWithVersionParams) (SecretVersions, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (Users, error)
+	DeactivateAllHMACKeys(ctx context.Context) error
 	DeleteExpiredSecretAndVersions(ctx context.Context) error
 	DeleteExpiredSharingRules(ctx context.Context) error
 	DeleteSecretAndVersionsByPath(ctx context.Context, path string) error
+	GetActiveHMACKey(ctx context.Context) (HmacKeys, error)
 	GetAllSecretVersionsByPath(ctx context.Context, path string) ([]SecretVersions, error)
 	GetLatestSecretByPath(ctx context.Context, path string) (GetLatestSecretByPathRow, error)
 	GetLatestSecretsForUser(ctx context.Context, userID uuid.UUID) ([]GetLatestSecretsForUserRow, error)
 	GetLatestVersionNumberByPath(ctx context.Context, path string) (interface{}, error)
 	GetPermissions(ctx context.Context, arg GetPermissionsParams) (string, error)
 	GetSecretVersionByPathAndVersion(ctx context.Context, arg GetSecretVersionByPathAndVersionParams) (GetSecretVersionByPathAndVersionRow, error)
+	GetSecretVersionWithHMAC(ctx context.Context, arg GetSecretVersionWithHMACParams) (GetSecretVersionWithHMACRow, error)
 	GetSecretsSharedWithMe(ctx context.Context, targetEmail string) ([]GetSecretsSharedWithMeRow, error)
 	GetSecretsWithVersionCount(ctx context.Context) ([]GetSecretsWithVersionCountRow, error)
 	GetSharedWith(ctx context.Context, arg GetSharedWithParams) ([]GetSharedWithRow, error)
 	GetUserByEmail(ctx context.Context, email string) (Users, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (Users, error)
+	InsertHMACKey(ctx context.Context, arg InsertHMACKeyParams) (uuid.UUID, error)
 	ShareSecret(ctx context.Context, arg ShareSecretParams) (SharingRules, error)
 }
 

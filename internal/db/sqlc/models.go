@@ -10,6 +10,14 @@ import (
 	"github.com/google/uuid"
 )
 
+type HmacKeys struct {
+	ID        uuid.UUID    `json:"id"`
+	Key       []byte       `json:"key"`
+	CreatedAt sql.NullTime `json:"created_at"`
+	ExpiresAt sql.NullTime `json:"expires_at"`
+	IsActive  sql.NullBool `json:"is_active"`
+}
+
 type SecretVersions struct {
 	ID             uuid.UUID     `json:"id"`
 	SecretID       uuid.UUID     `json:"secret_id"`
@@ -18,6 +26,8 @@ type SecretVersions struct {
 	Nonce          []byte        `json:"nonce"`
 	CreatedAt      sql.NullTime  `json:"created_at"`
 	CreatedBy      uuid.NullUUID `json:"created_by"`
+	HmacSignature  []byte        `json:"hmac_signature"`
+	HmacKeyID      uuid.NullUUID `json:"hmac_key_id"`
 }
 
 type Secrets struct {

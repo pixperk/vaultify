@@ -13,16 +13,23 @@ import (
 )
 
 const createNewSecretVersion = `-- name: CreateNewSecretVersion :one
-INSERT INTO secret_versions (secret_id, version, encrypted_value, nonce, created_by)
+INSERT INTO secret_versions (
+  secret_id, version, encrypted_value, nonce, created_by,
+  hmac_signature, hmac_key_id
+)
 SELECT 
-  s.id, 
-  COALESCE(MAX(sv.version), 0) + 1, 
-  $2, $3, $4
+  s.id,
+  COALESCE(MAX(sv.version), 0) + 1,
+  $2,  -- encrypted_value
+  $3,  -- nonce
+  $4,  -- created_by
+  $5,  -- hmac_signature
+  $6   -- hmac_key_id
 FROM secrets s
 LEFT JOIN secret_versions sv ON s.id = sv.secret_id
 WHERE s.path = $1
 GROUP BY s.id
-RETURNING id, secret_id, version, encrypted_value, nonce, created_at, created_by
+RETURNING id, secret_id, version, encrypted_value, nonce, created_at, created_by, hmac_signature, hmac_key_id
 `
 
 type CreateNewSecretVersionParams struct {
@@ -30,6 +37,8 @@ type CreateNewSecretVersionParams struct {
 	EncryptedValue []byte        `json:"encrypted_value"`
 	Nonce          []byte        `json:"nonce"`
 	CreatedBy      uuid.NullUUID `json:"created_by"`
+	HmacSignature  []byte        `json:"hmac_signature"`
+	HmacKeyID      uuid.NullUUID `json:"hmac_key_id"`
 }
 
 func (q *Queries) CreateNewSecretVersion(ctx context.Context, arg CreateNewSecretVersionParams) (SecretVersions, error) {
@@ -38,6 +47,8 @@ func (q *Queries) CreateNewSecretVersion(ctx context.Context, arg CreateNewSecre
 		arg.EncryptedValue,
 		arg.Nonce,
 		arg.CreatedBy,
+		arg.HmacSignature,
+		arg.HmacKeyID,
 	)
 	var i SecretVersions
 	err := row.Scan(
@@ -48,6 +59,8 @@ func (q *Queries) CreateNewSecretVersion(ctx context.Context, arg CreateNewSecre
 		&i.Nonce,
 		&i.CreatedAt,
 		&i.CreatedBy,
+		&i.HmacSignature,
+		&i.HmacKeyID,
 	)
 	return i, err
 }
@@ -62,7 +75,7 @@ INSERT INTO secret_versions (secret_id, version, encrypted_value, nonce, created
 VALUES (
     (SELECT id FROM inserted_secret), 1, $4, $5, $1
 )
-RETURNING id, secret_id, version, encrypted_value, nonce, created_at, created_by
+RETURNING id, secret_id, version, encrypted_value, nonce, created_at, created_by, hmac_signature, hmac_key_id
 `
 
 type CreateSecretWithVersionParams struct {
@@ -90,6 +103,8 @@ func (q *Queries) CreateSecretWithVersion(ctx context.Context, arg CreateSecretW
 		&i.Nonce,
 		&i.CreatedAt,
 		&i.CreatedBy,
+		&i.HmacSignature,
+		&i.HmacKeyID,
 	)
 	return i, err
 }
@@ -125,7 +140,7 @@ func (q *Queries) DeleteSecretAndVersionsByPath(ctx context.Context, path string
 }
 
 const getAllSecretVersionsByPath = `-- name: GetAllSecretVersionsByPath :many
-SELECT sv.id, sv.secret_id, sv.version, sv.encrypted_value, sv.nonce, sv.created_at, sv.created_by
+SELECT sv.id, sv.secret_id, sv.version, sv.encrypted_value, sv.nonce, sv.created_at, sv.created_by, sv.hmac_signature, sv.hmac_key_id
 FROM secrets s
 JOIN secret_versions sv ON s.id = sv.secret_id
 WHERE s.path = $1
@@ -149,6 +164,8 @@ func (q *Queries) GetAllSecretVersionsByPath(ctx context.Context, path string) (
 			&i.Nonce,
 			&i.CreatedAt,
 			&i.CreatedBy,
+			&i.HmacSignature,
+			&i.HmacKeyID,
 		); err != nil {
 			return nil, err
 		}
@@ -164,7 +181,7 @@ func (q *Queries) GetAllSecretVersionsByPath(ctx context.Context, path string) (
 }
 
 const getLatestSecretByPath = `-- name: GetLatestSecretByPath :one
-SELECT sv.id, sv.secret_id, sv.version, sv.encrypted_value, sv.nonce, sv.created_at, sv.created_by, s.id AS secret_id, s.user_id, s.path
+SELECT sv.id, sv.secret_id, sv.version, sv.encrypted_value, sv.nonce, sv.created_at, sv.created_by, sv.hmac_signature, sv.hmac_key_id, s.id AS secret_id, s.user_id, s.path
 FROM secrets s
 JOIN secret_versions sv ON s.id = sv.secret_id
 WHERE s.path = $1
@@ -181,6 +198,8 @@ type GetLatestSecretByPathRow struct {
 	Nonce          []byte        `json:"nonce"`
 	CreatedAt      sql.NullTime  `json:"created_at"`
 	CreatedBy      uuid.NullUUID `json:"created_by"`
+	HmacSignature  []byte        `json:"hmac_signature"`
+	HmacKeyID      uuid.NullUUID `json:"hmac_key_id"`
 	SecretID_2     uuid.UUID     `json:"secret_id_2"`
 	UserID         uuid.UUID     `json:"user_id"`
 	Path           string        `json:"path"`
@@ -197,6 +216,8 @@ func (q *Queries) GetLatestSecretByPath(ctx context.Context, path string) (GetLa
 		&i.Nonce,
 		&i.CreatedAt,
 		&i.CreatedBy,
+		&i.HmacSignature,
+		&i.HmacKeyID,
 		&i.SecretID_2,
 		&i.UserID,
 		&i.Path,
@@ -267,7 +288,7 @@ func (q *Queries) GetLatestVersionNumberByPath(ctx context.Context, path string)
 }
 
 const getSecretVersionByPathAndVersion = `-- name: GetSecretVersionByPathAndVersion :one
-SELECT sv.id, sv.secret_id, sv.version, sv.encrypted_value, sv.nonce, sv.created_at, sv.created_by, s.id AS secret_id,s.user_id, s.path
+SELECT sv.id, sv.secret_id, sv.version, sv.encrypted_value, sv.nonce, sv.created_at, sv.created_by, sv.hmac_signature, sv.hmac_key_id, s.id AS secret_id,s.user_id, s.path
 FROM secrets s
 JOIN secret_versions sv ON s.id = sv.secret_id
 WHERE s.path = $1 AND sv.version = $2
@@ -286,6 +307,8 @@ type GetSecretVersionByPathAndVersionRow struct {
 	Nonce          []byte        `json:"nonce"`
 	CreatedAt      sql.NullTime  `json:"created_at"`
 	CreatedBy      uuid.NullUUID `json:"created_by"`
+	HmacSignature  []byte        `json:"hmac_signature"`
+	HmacKeyID      uuid.NullUUID `json:"hmac_key_id"`
 	SecretID_2     uuid.UUID     `json:"secret_id_2"`
 	UserID         uuid.UUID     `json:"user_id"`
 	Path           string        `json:"path"`
@@ -302,6 +325,8 @@ func (q *Queries) GetSecretVersionByPathAndVersion(ctx context.Context, arg GetS
 		&i.Nonce,
 		&i.CreatedAt,
 		&i.CreatedBy,
+		&i.HmacSignature,
+		&i.HmacKeyID,
 		&i.SecretID_2,
 		&i.UserID,
 		&i.Path,
