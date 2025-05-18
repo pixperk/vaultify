@@ -12,6 +12,7 @@ import (
 
 type Querier interface {
 	CheckIfShared(ctx context.Context, arg CheckIfSharedParams) (bool, error)
+	CreateAuditLog(ctx context.Context, arg CreateAuditLogParams) (AuditLogs, error)
 	CreateNewSecretVersion(ctx context.Context, arg CreateNewSecretVersionParams) (SecretVersions, error)
 	CreateSecretWithVersion(ctx context.Context, arg CreateSecretWithVersionParams) (SecretVersions, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (Users, error)
@@ -19,6 +20,7 @@ type Querier interface {
 	DeleteExpiredSecretAndVersions(ctx context.Context) error
 	DeleteExpiredSharingRules(ctx context.Context) error
 	DeleteSecretAndVersionsByPath(ctx context.Context, path string) error
+	FilterAuditLogs(ctx context.Context, arg FilterAuditLogsParams) ([]AuditLogs, error)
 	GetActiveHMACKey(ctx context.Context) (HmacKeys, error)
 	GetAllSecretVersionsByPath(ctx context.Context, path string) ([]SecretVersions, error)
 	GetHMACKeyByID(ctx context.Context, id uuid.UUID) (HmacKeys, error)
