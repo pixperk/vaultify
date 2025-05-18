@@ -21,6 +21,7 @@ type Querier interface {
 	DeleteSecretAndVersionsByPath(ctx context.Context, path string) error
 	GetActiveHMACKey(ctx context.Context) (HmacKeys, error)
 	GetAllSecretVersionsByPath(ctx context.Context, path string) ([]SecretVersions, error)
+	GetHMACKeyByID(ctx context.Context, id uuid.UUID) (HmacKeys, error)
 	GetLatestSecretByPath(ctx context.Context, path string) (GetLatestSecretByPathRow, error)
 	GetLatestSecretsForUser(ctx context.Context, userID uuid.UUID) ([]GetLatestSecretsForUserRow, error)
 	GetLatestVersionNumberByPath(ctx context.Context, path string) (interface{}, error)

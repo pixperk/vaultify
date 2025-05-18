@@ -32,3 +32,7 @@ func VerifyHMAC(message, messageMAC, key []byte) (bool, error) {
 	}
 	return hmac.Equal(messageMAC, expectedMAC), nil
 }
+
+func ComputeHMACPayload(encrypted, nonce []byte) []byte {
+	return append(encrypted, nonce...)
+}

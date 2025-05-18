@@ -42,6 +42,24 @@ func (q *Queries) GetActiveHMACKey(ctx context.Context) (HmacKeys, error) {
 	return i, err
 }
 
+const getHMACKeyByID = `-- name: GetHMACKeyByID :one
+SELECT id, key, created_at, is_active
+FROM hmac_keys
+WHERE id = $1
+`
+
+func (q *Queries) GetHMACKeyByID(ctx context.Context, id uuid.UUID) (HmacKeys, error) {
+	row := q.db.QueryRowContext(ctx, getHMACKeyByID, id)
+	var i HmacKeys
+	err := row.Scan(
+		&i.ID,
+		&i.Key,
+		&i.CreatedAt,
+		&i.IsActive,
+	)
+	return i, err
+}
+
 const getSecretVersionWithHMAC = `-- name: GetSecretVersionWithHMAC :one
 SELECT sv.id, sv.secret_id, sv.version, sv.encrypted_value, sv.nonce,
        sv.created_at, sv.created_by, sv.hmac_signature, sv.hmac_key_id,

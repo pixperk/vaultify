@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -8,6 +9,7 @@ import (
 	"github.com/pixperk/vaultify/internal/auth"
 	db "github.com/pixperk/vaultify/internal/db/sqlc"
 	"github.com/pixperk/vaultify/internal/logger"
+	"github.com/pixperk/vaultify/internal/util"
 	"go.uber.org/zap"
 )
 
@@ -28,11 +30,34 @@ type updateSecretResponse struct {
 	Nonce     []byte `json:"nonce"`
 }
 
+func VerifySecretHMAC(secret db.GetLatestSecretByPathRow, key []byte) (bool, error) {
+	payload := util.ComputeHMACPayload(secret.EncryptedValue, secret.Nonce)
+	return util.VerifyHMAC(payload, secret.HmacSignature, key)
+}
+
 func (s *Server) getSecret(ctx *gin.Context) {
 
 	log := logger.New(s.config.Env)
 
 	secret := ctx.MustGet("secret").(db.GetLatestSecretByPathRow)
+
+	//Get the HMAC key from the database associated with the secret
+	hmacKey, err := s.store.GetHMACKeyByID(ctx, secret.HmacKeyID.UUID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	//Verify the hmac signature
+	isVerified, err := VerifySecretHMAC(secret, hmacKey.Key)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+	if !isVerified {
+		ctx.JSON(http.StatusUnauthorized, errorResponse(fmt.Errorf("invalid HMAC signature")))
+		return
+	}
 
 	// Decrypt the secret value
 	decryptedValue, err := s.encryptor.Decrypt(secret.EncryptedValue, secret.Nonce)
@@ -68,11 +93,45 @@ func (s *Server) updateSecret(ctx *gin.Context) {
 	}
 
 	secret := ctx.MustGet("secret").(db.GetLatestSecretByPathRow)
+
+	//Get the HMAC key from the database associated with the secret
+	secretHmacKey, err := s.store.GetHMACKeyByID(ctx, secret.HmacKeyID.UUID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	//Verify the hmac signature
+	isVerified, err := VerifySecretHMAC(secret, secretHmacKey.Key)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+	if !isVerified {
+		ctx.JSON(http.StatusUnauthorized, errorResponse(fmt.Errorf("invalid HMAC signature")))
+		return
+	}
+
 	// Encrypt the new secret value
 
 	encryptedValue, nonce, err := s.encryptor.Encrypt([]byte(req.Value))
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	// Create a new HMAC signature for the new secret value
+
+	hmacKey, err := s.store.GetActiveHMACKey(ctx)
+	if err != nil {
+		ctx.JSON(500, gin.H{"error": "failed to fetch active HMAC key"})
+		return
+	}
+
+	hmacPayload := util.ComputeHMACPayload(encryptedValue, nonce)
+	hmacSig, err := util.GenerateHMACSignature(hmacPayload, hmacKey.Key)
+	if err != nil {
+		ctx.JSON(500, gin.H{"error": "failed to generate HMAC signature"})
 		return
 	}
 
@@ -91,6 +150,11 @@ func (s *Server) updateSecret(ctx *gin.Context) {
 		Path:           secret.Path,
 		EncryptedValue: encryptedValue,
 		Nonce:          nonce,
+		HmacSignature:  hmacSig,
+		HmacKeyID: uuid.NullUUID{
+			UUID:  hmacKey.ID,
+			Valid: true,
+		},
 	})
 
 	if err != nil {

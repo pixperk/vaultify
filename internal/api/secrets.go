@@ -72,7 +72,8 @@ func (s *Server) createSecret(ctx *gin.Context) {
 		return
 	}
 
-	hmacSig, err := util.GenerateHMACSignature(encryptedValue, hmacKey.Key)
+	hmacPayload := util.ComputeHMACPayload(encryptedValue, nonce)
+	hmacSig, err := util.GenerateHMACSignature(hmacPayload, hmacKey.Key)
 	if err != nil {
 		ctx.JSON(500, gin.H{"error": "failed to generate HMAC signature"})
 		return
