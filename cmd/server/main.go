@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/pixperk/vaultify/internal/api"
+	"github.com/pixperk/vaultify/internal/audit"
 	"github.com/pixperk/vaultify/internal/config"
 	db "github.com/pixperk/vaultify/internal/db/sqlc"
 	"github.com/pixperk/vaultify/internal/logger"
@@ -27,7 +28,9 @@ func main() {
 
 	store := db.NewStore(conn)
 
-	server, err := api.NewServer(&cfg, *store)
+	auditSvc := audit.NewAuditService(*store, cfg.Env)
+
+	server, err := api.NewServer(&cfg, *store, *auditSvc)
 	if err != nil {
 		log.Fatal("cannot create server", zap.Error(err))
 	}

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/pixperk/vaultify/internal/audit"
 	"github.com/pixperk/vaultify/internal/auth"
 	"github.com/pixperk/vaultify/internal/config"
 	db "github.com/pixperk/vaultify/internal/db/sqlc"
@@ -20,9 +21,10 @@ type Server struct {
 	tokenMaker auth.TokenMaker
 	encryptor  *secrets.Encryptor
 	router     *gin.Engine
+	auditSvc   audit.Service
 }
 
-func NewServer(config *config.Config, store db.Store) (*Server, error) {
+func NewServer(config *config.Config, store db.Store, auditSvc audit.Service) (*Server, error) {
 
 	tokenMaker, err := auth.NewPasetoMaker(config.TokenSymmetricKey)
 	if err != nil {
@@ -39,6 +41,7 @@ func NewServer(config *config.Config, store db.Store) (*Server, error) {
 		store:      store,
 		tokenMaker: tokenMaker,
 		encryptor:  encryptor,
+		auditSvc:   auditSvc,
 	}
 
 	r := server.setupRouter()
