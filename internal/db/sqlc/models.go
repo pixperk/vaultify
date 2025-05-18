@@ -14,7 +14,6 @@ type HmacKeys struct {
 	ID        uuid.UUID    `json:"id"`
 	Key       []byte       `json:"key"`
 	CreatedAt sql.NullTime `json:"created_at"`
-	ExpiresAt sql.NullTime `json:"expires_at"`
 	IsActive  sql.NullBool `json:"is_active"`
 }
 

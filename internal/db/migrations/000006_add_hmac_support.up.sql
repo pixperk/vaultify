@@ -2,7 +2,6 @@ CREATE TABLE hmac_keys (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     key BYTEA NOT NULL,
     created_at TIMESTAMPTZ DEFAULT now(),
-    expires_at TIMESTAMPTZ DEFAULT NULL,
     is_active BOOLEAN DEFAULT true
 );
 

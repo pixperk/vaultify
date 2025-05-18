@@ -5,6 +5,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"time"
+
+	"github.com/pixperk/vaultify/internal/util"
 )
 
 type Store struct {
@@ -35,4 +38,35 @@ func (store *Store) ExecTx(ctx context.Context, fn func(*Queries) error) error {
 	}
 
 	return tx.Commit()
+}
+
+func (s *Store) RotateHmacKey(ctx context.Context, staleDuration time.Duration) error {
+	activeKey, err := s.GetActiveHMACKey(ctx)
+	if err != nil && err != sql.ErrNoRows {
+		return err
+	}
+
+	if staleDuration == 0 {
+		staleDuration = 24 * time.Hour
+	}
+
+	// If active key exists and it's less than 24 hours old, skip rotation
+	if err != sql.ErrNoRows && time.Since(activeKey.CreatedAt.Time) < staleDuration {
+		return nil
+	}
+
+	// Start rotation
+	return s.ExecTx(ctx, func(q *Queries) error {
+		key, err := util.GenerateRandomKey(32)
+		if err != nil {
+			return err
+		}
+
+		if err := q.DeactivateAllHMACKeys(ctx); err != nil {
+			return err
+		}
+
+		_, err = q.InsertHMACKey(ctx, key)
+		return err
+	})
 }

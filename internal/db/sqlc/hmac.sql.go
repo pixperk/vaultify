@@ -24,7 +24,7 @@ func (q *Queries) DeactivateAllHMACKeys(ctx context.Context) error {
 }
 
 const getActiveHMACKey = `-- name: GetActiveHMACKey :one
-SELECT id, key, created_at, expires_at, is_active
+SELECT id, key, created_at, is_active
 FROM hmac_keys
 WHERE is_active = true
 LIMIT 1
@@ -37,7 +37,6 @@ func (q *Queries) GetActiveHMACKey(ctx context.Context) (HmacKeys, error) {
 		&i.ID,
 		&i.Key,
 		&i.CreatedAt,
-		&i.ExpiresAt,
 		&i.IsActive,
 	)
 	return i, err
@@ -89,18 +88,13 @@ func (q *Queries) GetSecretVersionWithHMAC(ctx context.Context, arg GetSecretVer
 }
 
 const insertHMACKey = `-- name: InsertHMACKey :one
-INSERT INTO hmac_keys (key, expires_at, is_active)
-VALUES ($1, $2, true)
+INSERT INTO hmac_keys (key,  is_active)
+VALUES ($1,  true)
 RETURNING id
 `
 
-type InsertHMACKeyParams struct {
-	Key       []byte       `json:"key"`
-	ExpiresAt sql.NullTime `json:"expires_at"`
-}
-
-func (q *Queries) InsertHMACKey(ctx context.Context, arg InsertHMACKeyParams) (uuid.UUID, error) {
-	row := q.db.QueryRowContext(ctx, insertHMACKey, arg.Key, arg.ExpiresAt)
+func (q *Queries) InsertHMACKey(ctx context.Context, key []byte) (uuid.UUID, error) {
+	row := q.db.QueryRowContext(ctx, insertHMACKey, key)
 	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err

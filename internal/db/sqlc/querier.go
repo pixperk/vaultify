@@ -32,7 +32,7 @@ type Querier interface {
 	GetSharedWith(ctx context.Context, arg GetSharedWithParams) ([]GetSharedWithRow, error)
 	GetUserByEmail(ctx context.Context, email string) (Users, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (Users, error)
-	InsertHMACKey(ctx context.Context, arg InsertHMACKeyParams) (uuid.UUID, error)
+	InsertHMACKey(ctx context.Context, key []byte) (uuid.UUID, error)
 	ShareSecret(ctx context.Context, arg ShareSecretParams) (SharingRules, error)
 }
 
