@@ -22,7 +22,30 @@ func NewAuditService(store db.Store, env string) *Service {
 	}
 }
 
-func (a *Service) Log(ctx context.Context, userID uuid.UUID, email, action, resourceType, resourcePath string, success bool, reason *string) {
+// Log writes audit logs using the normal store (outside tx)
+func (a *Service) Log(ctx context.Context, userID uuid.UUID, email, action, resourceType, resourcePath string, success bool, reason *string) error {
+	auditLog, err := a.logInternal(ctx, nil, userID, email, action, resourceType, resourcePath, success, reason)
+	if err != nil {
+		return err
+	}
+
+	a.logToZap(auditLog, reason)
+	return nil
+}
+
+// LogTx writes audit logs using the given transaction Queries (inside tx)
+func (a *Service) LogTx(ctx context.Context, tx *db.Queries, userID uuid.UUID, email, action, resourceType, resourcePath string, success bool, reason *string) error {
+	auditLog, err := a.logInternal(ctx, tx, userID, email, action, resourceType, resourcePath, success, reason)
+	if err != nil {
+		return err
+	}
+
+	a.logToZap(auditLog, reason)
+	return nil
+}
+
+// internal helper: if tx is nil use normal store, else use tx
+func (a *Service) logInternal(ctx context.Context, tx *db.Queries, userID uuid.UUID, email, action, resourceType, resourcePath string, success bool, reason *string) (db.AuditLogs, error) {
 	var nullReason sql.NullString
 	if reason != nil {
 		nullReason = sql.NullString{
@@ -30,7 +53,8 @@ func (a *Service) Log(ctx context.Context, userID uuid.UUID, email, action, reso
 			Valid:  true,
 		}
 	}
-	log, err := a.store.CreateAuditLog(ctx, db.CreateAuditLogParams{
+
+	params := db.CreateAuditLogParams{
 		UserID:       userID,
 		UserEmail:    email,
 		Action:       action,
@@ -38,22 +62,24 @@ func (a *Service) Log(ctx context.Context, userID uuid.UUID, email, action, reso
 		ResourcePath: resourcePath,
 		Success:      success,
 		Reason:       nullReason,
-	})
-
-	if err != nil {
-		a.log.Error("failed to write audit log to db", zap.Error(err))
-		return
 	}
 
-	// Log to stdout/dev
+	if tx != nil {
+		return tx.CreateAuditLog(ctx, params)
+	} else {
+		return a.store.CreateAuditLog(ctx, params)
+	}
+}
+
+// Helper function to log to zap
+func (a *Service) logToZap(auditLog db.AuditLogs, reason *string) {
 	fields := []zap.Field{
-		zap.String("user", log.UserEmail),
-		zap.String("action", log.Action),
-		zap.String("resource_type", log.ResourceType),
-		zap.String("resource_path", log.ResourcePath),
-		zap.Bool("success", log.Success),
+		zap.String("user", auditLog.UserEmail),
+		zap.String("action", auditLog.Action),
+		zap.String("resource_type", auditLog.ResourceType),
+		zap.String("resource_path", auditLog.ResourcePath),
+		zap.Bool("success", auditLog.Success),
 	}
-
 	if reason != nil {
 		fields = append(fields, zap.String("reason", *reason))
 	}

@@ -73,7 +73,7 @@ func (s *Server) setupRouter() *gin.Engine {
 }
 
 func (s *Server) Start(address string) error {
-	s.StartHMACRotationLoop(context.Background(), 1*time.Second, 24*time.Hour)
+	s.StartHMACRotationLoop(context.Background(), 1*time.Hour, 24*time.Hour)
 	s.cleanExpiredSecrets(s.config.ExpirationCheckInterval)
 	return http.ListenAndServe(address, s.router)
 }

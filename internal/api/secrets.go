@@ -75,7 +75,12 @@ func (s *Server) createSecret(ctx *gin.Context) {
 	hmacPayload := util.ComputeHMACPayload(encryptedValue, nonce)
 	hmacSig, err := util.GenerateHMACSignature(hmacPayload, hmacKey.Key)
 	if err != nil {
-		ctx.JSON(500, gin.H{"error": "failed to generate HMAC signature"})
+		errMsg := "failed to generate HMAC signature"
+		err = s.auditSvc.Log(ctx, authPayload.UserID, authPayload.Email, "create_secret", "secret", path, false, &errMsg)
+		if err != nil {
+			errMsg = fmt.Sprintf("failed to log action: %v", err)
+		}
+		ctx.JSON(500, gin.H{"error": errMsg})
 		return
 	}
 
@@ -94,8 +99,20 @@ func (s *Server) createSecret(ctx *gin.Context) {
 			Valid: true,
 		},
 	}
+	var secret db.SecretVersions
 
-	secret, err := s.store.CreateSecretWithVersion(ctx, arg)
+	s.store.ExecTx(ctx, func(q *db.Queries) error {
+		secret, err = q.CreateSecretWithVersion(ctx, arg)
+		if err != nil {
+			return err
+		}
+
+		// Log the action
+		if err = s.auditSvc.LogTx(ctx, q, authPayload.UserID, authPayload.Email, "create_secret", "secret", path, true, nil); err != nil {
+			return fmt.Errorf("failed to log action: %w", err)
+		}
+		return nil
+	})
 
 	if err != nil {
 		if pqErr, ok := err.(*pq.Error); ok {
