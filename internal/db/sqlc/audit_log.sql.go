@@ -18,7 +18,7 @@ INSERT INTO audit_logs (
   user_id,
   user_email,
   action,
-  resource_type,
+  resource_version,
   resource_path,
   success,
   reason
@@ -26,17 +26,17 @@ INSERT INTO audit_logs (
 VALUES (
   $1, $2, $3, $4, $5, $6, $7
 )
-RETURNING id, user_id, user_email, action, resource_type, resource_path, success, reason, created_at
+RETURNING id, user_id, user_email, action, resource_version, resource_path, success, reason, created_at
 `
 
 type CreateAuditLogParams struct {
-	UserID       uuid.UUID      `json:"user_id"`
-	UserEmail    string         `json:"user_email"`
-	Action       string         `json:"action"`
-	ResourceType string         `json:"resource_type"`
-	ResourcePath string         `json:"resource_path"`
-	Success      bool           `json:"success"`
-	Reason       sql.NullString `json:"reason"`
+	UserID          uuid.UUID      `json:"user_id"`
+	UserEmail       string         `json:"user_email"`
+	Action          string         `json:"action"`
+	ResourceVersion int32          `json:"resource_version"`
+	ResourcePath    string         `json:"resource_path"`
+	Success         bool           `json:"success"`
+	Reason          sql.NullString `json:"reason"`
 }
 
 func (q *Queries) CreateAuditLog(ctx context.Context, arg CreateAuditLogParams) (AuditLogs, error) {
@@ -44,7 +44,7 @@ func (q *Queries) CreateAuditLog(ctx context.Context, arg CreateAuditLogParams) 
 		arg.UserID,
 		arg.UserEmail,
 		arg.Action,
-		arg.ResourceType,
+		arg.ResourceVersion,
 		arg.ResourcePath,
 		arg.Success,
 		arg.Reason,
@@ -55,7 +55,7 @@ func (q *Queries) CreateAuditLog(ctx context.Context, arg CreateAuditLogParams) 
 		&i.UserID,
 		&i.UserEmail,
 		&i.Action,
-		&i.ResourceType,
+		&i.ResourceVersion,
 		&i.ResourcePath,
 		&i.Success,
 		&i.Reason,
@@ -65,10 +65,10 @@ func (q *Queries) CreateAuditLog(ctx context.Context, arg CreateAuditLogParams) 
 }
 
 const filterAuditLogs = `-- name: FilterAuditLogs :many
-SELECT id, user_id, user_email, action, resource_type, resource_path, success, reason, created_at FROM audit_logs
+SELECT id, user_id, user_email, action, resource_version, resource_path, success, reason, created_at FROM audit_logs
 WHERE 
   ($1::TEXT IS NULL OR user_email = $1)
-  AND ($2::TEXT IS NULL OR resource_type = $2)
+  AND ($2::TEXT IS NULL OR resource_version = $2)
   AND ($3::TEXT IS NULL OR action = $3)
   AND ($4::TIMESTAMPTZ IS NULL OR created_at >= $4)
   AND ($5::TIMESTAMPTZ IS NULL OR created_at <= $5)
@@ -108,7 +108,7 @@ func (q *Queries) FilterAuditLogs(ctx context.Context, arg FilterAuditLogsParams
 			&i.UserID,
 			&i.UserEmail,
 			&i.Action,
-			&i.ResourceType,
+			&i.ResourceVersion,
 			&i.ResourcePath,
 			&i.Success,
 			&i.Reason,

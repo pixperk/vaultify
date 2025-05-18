@@ -75,12 +75,7 @@ func (s *Server) createSecret(ctx *gin.Context) {
 	hmacPayload := util.ComputeHMACPayload(encryptedValue, nonce)
 	hmacSig, err := util.GenerateHMACSignature(hmacPayload, hmacKey.Key)
 	if err != nil {
-		errMsg := "failed to generate HMAC signature"
-		err = s.auditSvc.Log(ctx, authPayload.UserID, authPayload.Email, "create_secret", "secret", path, false, &errMsg)
-		if err != nil {
-			errMsg = fmt.Sprintf("failed to log action: %v", err)
-		}
-		ctx.JSON(500, gin.H{"error": errMsg})
+		ctx.JSON(500, gin.H{"error": "failed to generate HMAC signature"})
 		return
 	}
 
@@ -108,7 +103,7 @@ func (s *Server) createSecret(ctx *gin.Context) {
 		}
 
 		// Log the action
-		if err = s.auditSvc.LogTx(ctx, q, authPayload.UserID, authPayload.Email, "create_secret", "secret", path, true, nil); err != nil {
+		if err = s.auditSvc.LogTx(ctx, q, authPayload.UserID, authPayload.Email, "create_secret", path, 1, true, nil); err != nil {
 			return fmt.Errorf("failed to log action: %w", err)
 		}
 		return nil

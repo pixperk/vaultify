@@ -41,6 +41,8 @@ func (s *Server) getSecret(ctx *gin.Context) {
 
 	secret := ctx.MustGet("secret").(db.GetLatestSecretByPathRow)
 
+	authorizationPayload := ctx.MustGet(authorizationPayloadKey).(*auth.Payload)
+
 	//Get the HMAC key from the database associated with the secret
 	hmacKey, err := s.store.GetHMACKeyByID(ctx, secret.HmacKeyID.UUID)
 	if err != nil {
@@ -56,6 +58,12 @@ func (s *Server) getSecret(ctx *gin.Context) {
 	}
 	if !isVerified {
 		ctx.JSON(http.StatusUnauthorized, errorResponse(fmt.Errorf("invalid HMAC signature")))
+		failureReason := "invalid HMAC signature"
+		//Log the secret access in the database
+		err = s.auditSvc.Log(ctx, authorizationPayload.UserID, authorizationPayload.Email, "read_secret", secret.Path, secret.Version, false, &failureReason)
+		if err != nil {
+			log.Error("failed to log secret access", zap.Error(err))
+		}
 		return
 	}
 
@@ -67,10 +75,16 @@ func (s *Server) getSecret(ctx *gin.Context) {
 	}
 
 	//log who accessed the secret
-	authorizationPayload := ctx.MustGet(authorizationPayloadKey).(*auth.Payload)
+
 	log.Info("Secret read",
 		zap.String("user", authorizationPayload.Email),
 		zap.String("secret_path", secret.Path))
+
+	//Log the secret access in the database
+	err = s.auditSvc.Log(ctx, authorizationPayload.UserID, authorizationPayload.Email, "read_secret", secret.Path, secret.Version, true, nil)
+	if err != nil {
+		log.Error("failed to log secret access", zap.Error(err))
+	}
 
 	resp := getSecretResponse{
 		Path:      secret.Path,
@@ -83,8 +97,6 @@ func (s *Server) getSecret(ctx *gin.Context) {
 }
 
 func (s *Server) updateSecret(ctx *gin.Context) {
-
-	log := logger.New(s.config.Env)
 
 	var req updateSecretRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -136,10 +148,6 @@ func (s *Server) updateSecret(ctx *gin.Context) {
 	}
 
 	authorizationPayload := ctx.MustGet(authorizationPayloadKey).(*auth.Payload)
-	//log who accessed the secret
-	log.Info("Secret overwritten",
-		zap.String("user", authorizationPayload.Email),
-		zap.String("secret_path", secret.Path))
 
 	// Update the secret in the database
 	updatedSecret, err := s.store.CreateNewSecretVersion(ctx, db.CreateNewSecretVersionParams{

@@ -11,15 +11,15 @@ import (
 )
 
 type AuditLogs struct {
-	ID           uuid.UUID      `json:"id"`
-	UserID       uuid.UUID      `json:"user_id"`
-	UserEmail    string         `json:"user_email"`
-	Action       string         `json:"action"`
-	ResourceType string         `json:"resource_type"`
-	ResourcePath string         `json:"resource_path"`
-	Success      bool           `json:"success"`
-	Reason       sql.NullString `json:"reason"`
-	CreatedAt    sql.NullTime   `json:"created_at"`
+	ID              uuid.UUID      `json:"id"`
+	UserID          uuid.UUID      `json:"user_id"`
+	UserEmail       string         `json:"user_email"`
+	Action          string         `json:"action"`
+	ResourceVersion int32          `json:"resource_version"`
+	ResourcePath    string         `json:"resource_path"`
+	Success         bool           `json:"success"`
+	Reason          sql.NullString `json:"reason"`
+	CreatedAt       sql.NullTime   `json:"created_at"`
 }
 
 type HmacKeys struct {
