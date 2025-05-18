@@ -8,6 +8,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/pixperk/vaultify/internal/auth"
 	db "github.com/pixperk/vaultify/internal/db/sqlc"
+	"github.com/pixperk/vaultify/internal/logger"
+	"go.uber.org/zap"
 )
 
 type rollbackSecretRequest struct {
@@ -50,6 +52,9 @@ func (s *Server) rollbackSecret(ctx *gin.Context) {
 		failureReason := "invalid HMAC signature"
 		//Log the secret access in the database
 		err = s.auditSvc.Log(ctx, authorizationPayload.UserID, authorizationPayload.Email, "rollback_secret", secret.Path, secret.Version, false, &failureReason)
+		if err != nil {
+			logger.New(s.config.Env).Error("failed to log secret access", zap.Error(err))
+		}
 		return
 	}
 	// Check if the version is valid
@@ -94,11 +99,6 @@ func (s *Server) rollbackSecret(ctx *gin.Context) {
 		}
 		return nil
 	})
-
-	if err != nil {
-		ctx.JSON(500, gin.H{"error": "failed to create new secret version"})
-		return
-	}
 
 	resp := rollbackSecretResponse{
 		Path:      secret.Path,

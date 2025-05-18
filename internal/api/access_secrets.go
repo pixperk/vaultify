@@ -74,12 +74,6 @@ func (s *Server) getSecret(ctx *gin.Context) {
 		return
 	}
 
-	//log who accessed the secret
-
-	log.Info("Secret read",
-		zap.String("user", authorizationPayload.Email),
-		zap.String("secret_path", secret.Path))
-
 	//Log the secret access in the database
 	err = s.auditSvc.Log(ctx, authorizationPayload.UserID, authorizationPayload.Email, "read_secret", secret.Path, secret.Version, true, nil)
 	if err != nil {
@@ -126,6 +120,9 @@ func (s *Server) updateSecret(ctx *gin.Context) {
 		failureReason := "invalid HMAC signature"
 		//Log the secret access in the database
 		err = s.auditSvc.Log(ctx, authorizationPayload.UserID, authorizationPayload.Email, "update_secret", secret.Path, secret.Version, false, &failureReason)
+		if err != nil {
+			logger.New(s.config.Env).Error("failed to log secret access", zap.Error(err))
+		}
 		return
 	}
 
@@ -180,8 +177,6 @@ func (s *Server) updateSecret(ctx *gin.Context) {
 		}
 		return nil
 	})
-
-	// Update the secret in the database
 
 	resp := updateSecretResponse{
 		Path:      secret.Path,
