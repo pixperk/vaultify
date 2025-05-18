@@ -16,13 +16,19 @@ func GenerateRandomKey(length int) ([]byte, error) {
 	return bytes, nil
 }
 
-func GenerateHMACSignature(message, key []byte) []byte {
+func GenerateHMACSignature(message, key []byte) ([]byte, error) {
 	mac := hmac.New(sha256.New, key)
-	mac.Write(message)
-	return mac.Sum(nil)
+	_, err := mac.Write(message)
+	if err != nil {
+		return nil, fmt.Errorf("failed to write message to HMAC: %w", err)
+	}
+	return mac.Sum(nil), nil
 }
 
-func VerifyHMAC(message, messageMAC, key []byte) bool {
-	expectedMAC := GenerateHMACSignature(message, key)
-	return hmac.Equal(messageMAC, expectedMAC)
+func VerifyHMAC(message, messageMAC, key []byte) (bool, error) {
+	expectedMAC, err := GenerateHMACSignature(message, key)
+	if err != nil {
+		return false, fmt.Errorf("failed to generate expected HMAC: %w", err)
+	}
+	return hmac.Equal(messageMAC, expectedMAC), nil
 }

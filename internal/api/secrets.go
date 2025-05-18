@@ -12,6 +12,7 @@ import (
 	"github.com/lib/pq"
 	"github.com/pixperk/vaultify/internal/auth"
 	db "github.com/pixperk/vaultify/internal/db/sqlc"
+	"github.com/pixperk/vaultify/internal/util"
 )
 
 type createSecretRequest struct {
@@ -65,6 +66,18 @@ func (s *Server) createSecret(ctx *gin.Context) {
 		path = fmt.Sprintf("%s/%s", authPayload.Email, strings.Join(pathWords, "-"))
 	}
 
+	hmacKey, err := s.store.GetActiveHMACKey(ctx)
+	if err != nil {
+		ctx.JSON(500, gin.H{"error": "failed to fetch active HMAC key"})
+		return
+	}
+
+	hmacSig, err := util.GenerateHMACSignature(encryptedValue, hmacKey.Key)
+	if err != nil {
+		ctx.JSON(500, gin.H{"error": "failed to generate HMAC signature"})
+		return
+	}
+
 	arg := db.CreateSecretWithVersionParams{
 		CreatedBy: uuid.NullUUID{
 			UUID:  authPayload.UserID,
@@ -74,6 +87,11 @@ func (s *Server) createSecret(ctx *gin.Context) {
 		EncryptedValue: encryptedValue,
 		Nonce:          nonce,
 		ExpiresAt:      expiresAt,
+		HmacSignature:  hmacSig,
+		HmacKeyID: uuid.NullUUID{
+			UUID:  hmacKey.ID,
+			Valid: true,
+		},
 	}
 
 	secret, err := s.store.CreateSecretWithVersion(ctx, arg)
