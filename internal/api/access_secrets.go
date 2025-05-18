@@ -106,6 +106,8 @@ func (s *Server) updateSecret(ctx *gin.Context) {
 
 	secret := ctx.MustGet("secret").(db.GetLatestSecretByPathRow)
 
+	authorizationPayload := ctx.MustGet(authorizationPayloadKey).(*auth.Payload)
+
 	//Get the HMAC key from the database associated with the secret
 	secretHmacKey, err := s.store.GetHMACKeyByID(ctx, secret.HmacKeyID.UUID)
 	if err != nil {
@@ -121,6 +123,9 @@ func (s *Server) updateSecret(ctx *gin.Context) {
 	}
 	if !isVerified {
 		ctx.JSON(http.StatusUnauthorized, errorResponse(fmt.Errorf("invalid HMAC signature")))
+		failureReason := "invalid HMAC signature"
+		//Log the secret access in the database
+		err = s.auditSvc.Log(ctx, authorizationPayload.UserID, authorizationPayload.Email, "update_secret", secret.Path, secret.Version, false, &failureReason)
 		return
 	}
 
@@ -147,10 +152,7 @@ func (s *Server) updateSecret(ctx *gin.Context) {
 		return
 	}
 
-	authorizationPayload := ctx.MustGet(authorizationPayloadKey).(*auth.Payload)
-
-	// Update the secret in the database
-	updatedSecret, err := s.store.CreateNewSecretVersion(ctx, db.CreateNewSecretVersionParams{
+	args := db.CreateNewSecretVersionParams{
 		CreatedBy: uuid.NullUUID{
 			UUID:  authorizationPayload.UserID,
 			Valid: true,
@@ -163,12 +165,23 @@ func (s *Server) updateSecret(ctx *gin.Context) {
 			UUID:  hmacKey.ID,
 			Valid: true,
 		},
+	}
+
+	var updatedSecret db.SecretVersions
+	s.store.ExecTx(ctx, func(q *db.Queries) error {
+		updatedSecret, err = q.CreateNewSecretVersion(ctx, args)
+		if err != nil {
+			return err
+		}
+
+		// Log the action
+		if err = s.auditSvc.LogTx(ctx, q, authorizationPayload.UserID, authorizationPayload.Email, "update_secret", secret.Path, updatedSecret.Version, true, nil); err != nil {
+			return fmt.Errorf("failed to log action: %w", err)
+		}
+		return nil
 	})
 
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
-		return
-	}
+	// Update the secret in the database
 
 	resp := updateSecretResponse{
 		Path:      secret.Path,
