@@ -6,9 +6,11 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/pixperk/vaultify/internal/auth"
 	db "github.com/pixperk/vaultify/internal/db/sqlc"
 	"github.com/pixperk/vaultify/internal/logger"
+	"github.com/pixperk/vaultify/internal/util"
 	"go.uber.org/zap"
 )
 
@@ -17,10 +19,12 @@ type rollbackSecretRequest struct {
 }
 
 type rollbackSecretResponse struct {
-	Path      string `json:"path"`
-	Version   int32  `json:"version"`
-	Encrypted []byte `json:"encrypted_value"`
-	Nonce     []byte `json:"nonce"`
+	Path            string `json:"path"`
+	ExistingVersion int32  `json:"existing_version"`
+	ToVersion       int32  `json:"to_version"`
+	NewVersion      int32  `json:"new_version"`
+	Encrypted       []byte `json:"encrypted_value"`
+	Nonce           []byte `json:"nonce"`
 }
 
 func (s *Server) rollbackSecret(ctx *gin.Context) {
@@ -78,11 +82,44 @@ func (s *Server) rollbackSecret(ctx *gin.Context) {
 		return
 	}
 
+	decryptedValue, err := s.encryptor.Decrypt(rollbackToSecret.EncryptedValue, rollbackToSecret.Nonce)
+
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	encryptedValue, nonce, err := s.encryptor.Encrypt([]byte(decryptedValue))
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	// Create a new HMAC signature for the new secret value
+
+	hmacKey, err := s.store.GetActiveHMACKey(ctx)
+	if err != nil {
+		ctx.JSON(500, gin.H{"error": "failed to fetch active HMAC key"})
+		return
+	}
+
+	hmacPayload := util.ComputeHMACPayload(encryptedValue, nonce)
+	hmacSig, err := util.GenerateHMACSignature(hmacPayload, hmacKey.Key)
+	if err != nil {
+		ctx.JSON(500, gin.H{"error": "failed to generate HMAC signature"})
+		return
+	}
+
 	args := db.CreateNewSecretVersionParams{
 		CreatedBy:      rollbackToSecret.CreatedBy,
-		EncryptedValue: rollbackToSecret.EncryptedValue,
-		Nonce:          rollbackToSecret.Nonce,
+		EncryptedValue: encryptedValue,
+		Nonce:          nonce,
 		Path:           rollbackToSecret.Path,
+		HmacSignature:  hmacSig,
+		HmacKeyID: uuid.NullUUID{
+			UUID:  hmacKey.ID,
+			Valid: true,
+		},
 	}
 
 	var mirroredSecret db.SecretVersions
@@ -101,10 +138,12 @@ func (s *Server) rollbackSecret(ctx *gin.Context) {
 	})
 
 	resp := rollbackSecretResponse{
-		Path:      secret.Path,
-		Version:   mirroredSecret.Version,
-		Encrypted: mirroredSecret.EncryptedValue,
-		Nonce:     mirroredSecret.Nonce,
+		Path:            secret.Path,
+		ExistingVersion: secret.Version,
+		ToVersion:       req.Version,
+		NewVersion:      mirroredSecret.Version,
+		Encrypted:       mirroredSecret.EncryptedValue,
+		Nonce:           mirroredSecret.Nonce,
 	}
 
 	ctx.JSON(200, resp)
