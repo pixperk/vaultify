@@ -41,32 +41,48 @@ func (store *Store) ExecTx(ctx context.Context, fn func(*Queries) error) error {
 }
 
 func (s *Store) RotateHmacKey(ctx context.Context, staleDuration time.Duration) error {
+	logPrefix := "[RotateHmacKey]"
+
+	fmt.Println(logPrefix, "Starting HMAC key rotation check")
+
 	activeKey, err := s.GetActiveHMACKey(ctx)
 	if err != nil && err != sql.ErrNoRows {
+		fmt.Printf("%s Error retrieving active HMAC key: %v\n", logPrefix, err)
 		return err
 	}
 
 	if staleDuration == 0 {
 		staleDuration = 24 * time.Hour
+		fmt.Printf("%s No stale duration provided, defaulting to %v\n", logPrefix, staleDuration)
 	}
 
-	// If active key exists and it's less than 24 hours old, skip rotation
 	if err != sql.ErrNoRows && time.Since(activeKey.CreatedAt.Time) < staleDuration {
+		fmt.Printf("%s Active HMAC key is fresh (created at %v), skipping rotation\n", logPrefix, activeKey.CreatedAt.Time)
 		return nil
 	}
 
-	// Start rotation
+	fmt.Println(logPrefix, "No valid active HMAC key found or key is stale, rotating now")
+
 	return s.ExecTx(ctx, func(q *Queries) error {
 		key, err := util.GenerateRandomKey(32)
 		if err != nil {
+			fmt.Printf("%s Failed to generate new random key: %v\n", logPrefix, err)
 			return err
 		}
 
 		if err := q.DeactivateAllHMACKeys(ctx); err != nil {
+			fmt.Printf("%s Failed to deactivate existing HMAC keys: %v\n", logPrefix, err)
 			return err
 		}
 
+		fmt.Println(logPrefix, "Inserting new HMAC key into DB")
 		_, err = q.InsertHMACKey(ctx, key)
+		if err != nil {
+			fmt.Printf("%s Failed to insert new HMAC key: %v\n", logPrefix, err)
+		} else {
+			fmt.Println(logPrefix, "HMAC key rotation completed successfully 🎉")
+		}
+
 		return err
 	})
 }
