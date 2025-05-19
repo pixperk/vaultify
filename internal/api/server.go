@@ -61,8 +61,11 @@ func (s *Server) setupRouter() *gin.Engine {
 
 	rl := util.NewRateLimiter(s.config.RedisAddr, s.config.RateLimitTokens, s.config.RateLimitRefill)
 
+	r.GET("/audit", authMiddleware(s.tokenMaker), rl.Middleware(), s.getAuditLogs)
+
 	authRoutes := r.Group("/secrets").Use(authMiddleware(s.tokenMaker)).Use(rl.Middleware())
 	authRoutes.POST("/", s.createSecret)
+
 	authRoutes.GET("/*path", s.RequireReadAccess(), s.getSecret)
 	authRoutes.PUT("/*path", s.RequireWriteAccess(), s.updateSecret)
 	authRoutes.POST("/rollback/*path", s.RequireWriteAccess(), s.rollbackSecret)

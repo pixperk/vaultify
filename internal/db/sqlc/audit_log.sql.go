@@ -8,7 +8,6 @@ package db
 import (
 	"context"
 	"database/sql"
-	"time"
 
 	"github.com/google/uuid"
 )
@@ -66,33 +65,39 @@ func (q *Queries) CreateAuditLog(ctx context.Context, arg CreateAuditLogParams) 
 
 const filterAuditLogs = `-- name: FilterAuditLogs :many
 SELECT id, user_id, user_email, action, resource_version, resource_path, success, reason, created_at FROM audit_logs
-WHERE 
-  ($1::TEXT IS NULL OR user_email = $1)
-  AND ($2::TEXT IS NULL OR resource_version = $2)
-  AND ($3::TEXT IS NULL OR action = $3)
-  AND ($4::TIMESTAMPTZ IS NULL OR created_at >= $4)
-  AND ($5::TIMESTAMPTZ IS NULL OR created_at <= $5)
+WHERE
+  (user_email = $1 OR $1 = '')
+  AND (resource_version = $2 OR $2 = 0)
+  AND (action = $3 OR $3 = '')
+  AND (created_at >= $4 OR $4 IS NULL)
+  AND (created_at <= $5 OR $5 IS NULL)
+  AND (resource_path = $6 OR $6 = '')
+  AND (success = $7 OR $7 IS NULL)
 ORDER BY created_at DESC
-LIMIT $6 OFFSET $7
+LIMIT $8 OFFSET $9
 `
 
 type FilterAuditLogsParams struct {
-	Column1 string    `json:"column_1"`
-	Column2 string    `json:"column_2"`
-	Column3 string    `json:"column_3"`
-	Column4 time.Time `json:"column_4"`
-	Column5 time.Time `json:"column_5"`
-	Limit   int32     `json:"limit"`
-	Offset  int32     `json:"offset"`
+	UserEmail       string       `json:"user_email"`
+	ResourceVersion int32        `json:"resource_version"`
+	Action          string       `json:"action"`
+	CreatedAt       sql.NullTime `json:"created_at"`
+	CreatedAt_2     sql.NullTime `json:"created_at_2"`
+	ResourcePath    string       `json:"resource_path"`
+	Success         bool         `json:"success"`
+	Limit           int32        `json:"limit"`
+	Offset          int32        `json:"offset"`
 }
 
 func (q *Queries) FilterAuditLogs(ctx context.Context, arg FilterAuditLogsParams) ([]AuditLogs, error) {
 	rows, err := q.db.QueryContext(ctx, filterAuditLogs,
-		arg.Column1,
-		arg.Column2,
-		arg.Column3,
-		arg.Column4,
-		arg.Column5,
+		arg.UserEmail,
+		arg.ResourceVersion,
+		arg.Action,
+		arg.CreatedAt,
+		arg.CreatedAt_2,
+		arg.ResourcePath,
+		arg.Success,
 		arg.Limit,
 		arg.Offset,
 	)
