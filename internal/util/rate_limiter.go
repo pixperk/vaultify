@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/pixperk/vaultify/internal/auth"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -40,7 +41,8 @@ func NewRateLimiter(redisAddr string, maxTokens int, refillRate float64) *RateLi
 // Middleware
 func (rl *RateLimiter) Middleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		key := fmt.Sprintf("rate_limit:%s", c.ClientIP())
+		authorizationPayload := c.MustGet("authorization_payload").(*auth.Payload)
+		key := fmt.Sprintf("rate_limit:%s", authorizationPayload.UserID)
 		now := float64(time.Now().Unix())
 
 		// Call the Lua script to manage the token bucket
