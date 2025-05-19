@@ -7,11 +7,14 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/pixperk/vaultify/internal/auth"
 	db "github.com/pixperk/vaultify/internal/db/sqlc"
 )
 
 func (s *Server) getAuditLogs(c *gin.Context) {
-	email := c.Query("email")        // "" means no filter
+
+	authPayload := c.MustGet(authorizationPayloadKey).(*auth.Payload)
+	email := authPayload.Email
 	action := c.Query("action")      // "" means no filter
 	path := c.Query("path")          // "" means no filter
 	successStr := c.Query("success") // "" means no filter
