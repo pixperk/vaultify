@@ -27,6 +27,19 @@ type secretResponse struct {
 	Nonce     []byte `json:"nonce"`
 }
 
+// @Summary      Create a new secret
+// @Description  Encrypts and stores a secret with optional TTL, linked to the authenticated user. The encrypted secret is signed with an HMAC signature to ensure integrity and prevent tampering.
+// @Tags         Secrets
+// @Accept       json
+// @Produce      json
+// @Param        secret  body  createSecretRequest  true  "Secret creation request"
+// @Success      200     {object}  secretResponse
+// @Failure      400     {object}  swaggerErrorResponse
+// @Failure      401     {object}  swaggerErrorResponse
+// @Failure      403     {object}  swaggerErrorResponse
+// @Failure      500     {object}  swaggerErrorResponse
+// @Security     ApiKeyAuth
+// @Router       /api/v1/secrets [post]
 func (s *Server) createSecret(ctx *gin.Context) {
 	var req createSecretRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {

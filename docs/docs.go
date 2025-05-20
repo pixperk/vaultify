@@ -76,6 +76,69 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/secrets": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Encrypts and stores a secret with optional TTL, linked to the authenticated user. The encrypted secret is signed with an HMAC signature to ensure integrity and prevent tampering.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Secrets"
+                ],
+                "summary": "Create a new secret",
+                "parameters": [
+                    {
+                        "description": "Secret creation request",
+                        "name": "secret",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.createSecretRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.secretResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.swaggerErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.swaggerErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/api.swaggerErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.swaggerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/sign-up": {
             "post": {
                 "description": "Create a new user with hashed password",
@@ -124,6 +187,24 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "api.createSecretRequest": {
+            "type": "object",
+            "required": [
+                "path",
+                "value"
+            ],
+            "properties": {
+                "path": {
+                    "type": "string"
+                },
+                "ttl_seconds": {
+                    "type": "integer"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
         "api.createUserRequest": {
             "type": "object",
             "required": [
@@ -168,6 +249,26 @@ const docTemplate = `{
                 },
                 "user": {
                     "$ref": "#/definitions/api.userResponse"
+                }
+            }
+        },
+        "api.secretResponse": {
+            "type": "object",
+            "properties": {
+                "encrypted_value": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "nonce": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "path": {
+                    "type": "string"
                 }
             }
         },

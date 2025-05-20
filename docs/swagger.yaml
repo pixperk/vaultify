@@ -1,5 +1,17 @@
 basePath: /api/v1
 definitions:
+  api.createSecretRequest:
+    properties:
+      path:
+        type: string
+      ttl_seconds:
+        type: integer
+      value:
+        type: string
+    required:
+    - path
+    - value
+    type: object
   api.createUserRequest:
     properties:
       email:
@@ -31,6 +43,19 @@ definitions:
         type: string
       user:
         $ref: '#/definitions/api.userResponse'
+    type: object
+  api.secretResponse:
+    properties:
+      encrypted_value:
+        items:
+          type: integer
+        type: array
+      nonce:
+        items:
+          type: integer
+        type: array
+      path:
+        type: string
     type: object
   api.swaggerErrorResponse:
     properties:
@@ -93,6 +118,48 @@ paths:
       summary: Log in a user
       tags:
       - Auth
+  /api/v1/secrets:
+    post:
+      consumes:
+      - application/json
+      description: Encrypts and stores a secret with optional TTL, linked to the authenticated
+        user. The encrypted secret is signed with an HMAC signature to ensure integrity
+        and prevent tampering.
+      parameters:
+      - description: Secret creation request
+        in: body
+        name: secret
+        required: true
+        schema:
+          $ref: '#/definitions/api.createSecretRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.secretResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.swaggerErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.swaggerErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.swaggerErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.swaggerErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Create a new secret
+      tags:
+      - Secrets
   /api/v1/sign-up:
     post:
       consumes:
