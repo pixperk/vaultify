@@ -13,6 +13,8 @@ import (
 	db "github.com/pixperk/vaultify/internal/db/sqlc"
 	"github.com/pixperk/vaultify/internal/secrets"
 	"github.com/pixperk/vaultify/internal/util"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 type Server struct {
@@ -53,26 +55,29 @@ func NewServer(config *config.Config, store db.Store, auditSvc audit.Service) (*
 func (s *Server) setupRouter() *gin.Engine {
 	r := gin.New()
 
-	r.GET("/ping", func(c *gin.Context) {
+	s.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
+	api := r.Group("/api/v1")
+
+	api.GET("/ping", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "pong"})
 	})
-	r.POST("/sign-up", s.createUser)
-	r.POST("/login", s.loginUser)
+	api.POST("/sign-up", s.createUser)
+	api.POST("/login", s.loginUser)
 
 	rl := util.NewRateLimiter(s.config.RedisAddr, s.config.RateLimitTokens, s.config.RateLimitRefill)
 
-	r.GET("/audit", authMiddleware(s.tokenMaker), rl.Middleware(), s.getAuditLogs)
+	api.GET("/audit", authMiddleware(s.tokenMaker), rl.Middleware(), s.getAuditLogs)
 
-	authRoutes := r.Group("/secrets").Use(authMiddleware(s.tokenMaker)).Use(rl.Middleware())
+	authRoutes := api.Group("/secrets").Use(authMiddleware(s.tokenMaker)).Use(rl.Middleware())
+
 	authRoutes.POST("/", s.createSecret)
-
 	authRoutes.GET("/*path", s.RequireReadAccess(), s.getSecret)
 	authRoutes.PUT("/*path", s.RequireWriteAccess(), s.updateSecret)
 	authRoutes.POST("/rollback/*path", s.RequireWriteAccess(), s.rollbackSecret)
 	authRoutes.POST("/share", s.shareSecret)
 
 	return r
-
 }
 
 func (s *Server) Start(address string) error {

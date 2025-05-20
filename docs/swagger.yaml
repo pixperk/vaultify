@@ -1,0 +1,11 @@
+basePath: /api/v1
+host: localhost:8080
+info:
+  contact:
+    email: mishrayashaswikumar@gmail.com
+    name: Yashaswi Kumar Mishra
+  description: Secure secret management system in Go
+  title: Vaultify API
+  version: "1.0"
+paths: {}
+swagger: "2.0"

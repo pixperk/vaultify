@@ -1,3 +1,12 @@
+// @title Vaultify API
+// @version 1.0
+// @description Secure secret management system in Go
+
+// @contact.name Yashaswi Kumar Mishra
+// @contact.email mishrayashaswikumar@gmail.com
+
+// @host localhost:8080
+// @BasePath /api/v1
 package main
 
 import (
@@ -12,6 +21,8 @@ import (
 	"go.uber.org/zap"
 
 	_ "github.com/lib/pq"
+
+	_ "github.com/pixperk/vaultify/docs"
 )
 
 func main() {
