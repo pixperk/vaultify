@@ -5,7 +5,7 @@
 // @contact.name Yashaswi Kumar Mishra
 // @contact.email mishrayashaswikumar@gmail.com
 
-// @host localhost:8080
+// @host localhost:9090
 // @BasePath /api/v1
 package main
 

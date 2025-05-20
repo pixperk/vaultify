@@ -1,5 +1,52 @@
 basePath: /api/v1
-host: localhost:8080
+definitions:
+  api.createUserRequest:
+    properties:
+      email:
+        type: string
+      name:
+        type: string
+      password:
+        minLength: 6
+        type: string
+    required:
+    - email
+    - name
+    - password
+    type: object
+  api.loginUserRequest:
+    properties:
+      email:
+        type: string
+      password:
+        minLength: 6
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  api.loginUserResponse:
+    properties:
+      access_token:
+        type: string
+      user:
+        $ref: '#/definitions/api.userResponse'
+    type: object
+  api.swaggerErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  api.userResponse:
+    properties:
+      created_at:
+        type: string
+      email:
+        type: string
+      name:
+        type: string
+    type: object
+host: localhost:9090
 info:
   contact:
     email: mishrayashaswikumar@gmail.com
@@ -7,5 +54,73 @@ info:
   description: Secure secret management system in Go
   title: Vaultify API
   version: "1.0"
-paths: {}
+paths:
+  /api/v1/login:
+    post:
+      consumes:
+      - application/json
+      description: Verify credentials and return access token
+      parameters:
+      - description: Login credentials
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/api.loginUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.loginUserResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.swaggerErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.swaggerErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.swaggerErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.swaggerErrorResponse'
+      summary: Log in a user
+      tags:
+      - Auth
+  /api/v1/sign-up:
+    post:
+      consumes:
+      - application/json
+      description: Create a new user with hashed password
+      parameters:
+      - description: User registration info
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/api.createUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.userResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.swaggerErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.swaggerErrorResponse'
+      summary: Register a new user
+      tags:
+      - Auth
 swagger: "2.0"

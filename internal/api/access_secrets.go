@@ -135,17 +135,16 @@ func (s *Server) updateSecret(ctx *gin.Context) {
 	}
 
 	// Create a new HMAC signature for the new secret value
-
 	hmacKey, err := s.store.GetActiveHMACKey(ctx)
 	if err != nil {
-		ctx.JSON(500, gin.H{"error": "failed to fetch active HMAC key"})
+		ctx.JSON(http.StatusInternalServerError, errorResponse(fmt.Errorf("failed to fetch active HMAC key")))
 		return
 	}
 
 	hmacPayload := util.ComputeHMACPayload(encryptedValue, nonce)
 	hmacSig, err := util.GenerateHMACSignature(hmacPayload, hmacKey.Key)
 	if err != nil {
-		ctx.JSON(500, gin.H{"error": "failed to generate HMAC signature"})
+		ctx.JSON(http.StatusInternalServerError, errorResponse(fmt.Errorf("failed to generate HMAC signature")))
 		return
 	}
 

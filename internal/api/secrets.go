@@ -30,21 +30,19 @@ type secretResponse struct {
 func (s *Server) createSecret(ctx *gin.Context) {
 	var req createSecretRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(400, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
-
 	authPayload := ctx.MustGet(authorizationPayloadKey).(*auth.Payload)
 
 	if authPayload == nil {
-		ctx.JSON(401, gin.H{"error": "unauthorized"})
+		ctx.JSON(http.StatusUnauthorized, errorResponse(fmt.Errorf("unauthorized")))
 		return
 	}
-
 	// Encrypt the secret value
 	encryptedValue, nonce, err := s.encryptor.Encrypt([]byte(req.Value))
 	if err != nil {
-		ctx.JSON(500, gin.H{"error": "failed to encrypt secret"})
+		ctx.JSON(http.StatusInternalServerError, errorResponse(fmt.Errorf("failed to encrypt secret")))
 		return
 	}
 
@@ -65,17 +63,16 @@ func (s *Server) createSecret(ctx *gin.Context) {
 		//join the path words with a -
 		path = fmt.Sprintf("%s/%s", authPayload.Email, strings.Join(pathWords, "-"))
 	}
-
 	hmacKey, err := s.store.GetActiveHMACKey(ctx)
 	if err != nil {
-		ctx.JSON(500, gin.H{"error": "failed to fetch active HMAC key"})
+		ctx.JSON(http.StatusInternalServerError, errorResponse(fmt.Errorf("failed to fetch active HMAC key")))
 		return
 	}
 
 	hmacPayload := util.ComputeHMACPayload(encryptedValue, nonce)
 	hmacSig, err := util.GenerateHMACSignature(hmacPayload, hmacKey.Key)
 	if err != nil {
-		ctx.JSON(500, gin.H{"error": "failed to generate HMAC signature"})
+		ctx.JSON(http.StatusInternalServerError, errorResponse(fmt.Errorf("failed to generate HMAC signature")))
 		return
 	}
 
@@ -120,13 +117,12 @@ func (s *Server) createSecret(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
-
 	resp := secretResponse{
 		Path:      arg.Path,
 		Encrypted: secret.EncryptedValue,
 		Nonce:     secret.Nonce,
 	}
 
-	ctx.JSON(200, resp)
+	ctx.JSON(http.StatusOK, resp)
 
 }

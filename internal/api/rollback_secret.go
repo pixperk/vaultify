@@ -30,7 +30,7 @@ type rollbackSecretResponse struct {
 func (s *Server) rollbackSecret(ctx *gin.Context) {
 	var req rollbackSecretRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(400, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
 
@@ -60,10 +60,9 @@ func (s *Server) rollbackSecret(ctx *gin.Context) {
 			logger.New(s.config.Env).Error("failed to log secret access", zap.Error(err))
 		}
 		return
-	}
-	// Check if the version is valid
+	} // Check if the version is valid
 	if req.Version <= 0 || req.Version > secret.Version {
-		ctx.JSON(400, gin.H{"error": "invalid version"})
+		ctx.JSON(http.StatusBadRequest, errorResponse(fmt.Errorf("invalid version")))
 		return
 	}
 
@@ -72,13 +71,12 @@ func (s *Server) rollbackSecret(ctx *gin.Context) {
 		Version: req.Version,
 	},
 	)
-
 	if err != nil {
 		if err == sql.ErrNoRows {
-			ctx.JSON(404, gin.H{"error": "secret version not found"})
+			ctx.JSON(http.StatusNotFound, errorResponse(fmt.Errorf("secret version not found")))
 			return
 		}
-		ctx.JSON(500, gin.H{"error": "failed to get secret version"})
+		ctx.JSON(http.StatusInternalServerError, errorResponse(fmt.Errorf("failed to get secret version")))
 		return
 	}
 
@@ -96,17 +94,16 @@ func (s *Server) rollbackSecret(ctx *gin.Context) {
 	}
 
 	// Create a new HMAC signature for the new secret value
-
 	hmacKey, err := s.store.GetActiveHMACKey(ctx)
 	if err != nil {
-		ctx.JSON(500, gin.H{"error": "failed to fetch active HMAC key"})
+		ctx.JSON(http.StatusInternalServerError, errorResponse(fmt.Errorf("failed to fetch active HMAC key")))
 		return
 	}
 
 	hmacPayload := util.ComputeHMACPayload(encryptedValue, nonce)
 	hmacSig, err := util.GenerateHMACSignature(hmacPayload, hmacKey.Key)
 	if err != nil {
-		ctx.JSON(500, gin.H{"error": "failed to generate HMAC signature"})
+		ctx.JSON(http.StatusInternalServerError, errorResponse(fmt.Errorf("failed to generate HMAC signature")))
 		return
 	}
 
@@ -136,7 +133,6 @@ func (s *Server) rollbackSecret(ctx *gin.Context) {
 		}
 		return nil
 	})
-
 	resp := rollbackSecretResponse{
 		Path:            secret.Path,
 		ExistingVersion: secret.Version,
@@ -146,5 +142,5 @@ func (s *Server) rollbackSecret(ctx *gin.Context) {
 		Nonce:           mirroredSecret.Nonce,
 	}
 
-	ctx.JSON(200, resp)
+	ctx.JSON(http.StatusOK, resp)
 }

@@ -10,6 +10,10 @@ import (
 	"github.com/pixperk/vaultify/internal/util"
 )
 
+// swaggerErrorResponse is a generic error wrapper for swagger docs
+type swaggerErrorResponse struct {
+	Error string `json:"error"`
+}
 type createUserRequest struct {
 	Name     string `json:"name" binding:"required"`
 	Email    string `json:"email" binding:"required,email"`
@@ -40,10 +44,20 @@ func newUserResponse(user db.Users) userResponse {
 	}
 }
 
+// @Summary      Register a new user
+// @Description  Create a new user with hashed password
+// @Tags         Auth
+// @Accept       json
+// @Produce      json
+// @Param        user  body  createUserRequest  true  "User registration info"
+// @Success      200   {object}  userResponse
+// @Failure      400   {object}  swaggerErrorResponse
+// @Failure      500   {object}  swaggerErrorResponse
+// @Router       /api/v1/sign-up [post]
 func (s *Server) createUser(ctx *gin.Context) {
 	var req createUserRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(400, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
 
@@ -58,20 +72,31 @@ func (s *Server) createUser(ctx *gin.Context) {
 		Email:        req.Email,
 		PasswordHash: hashedPassword,
 	}
-
 	user, err := s.store.CreateUser(ctx, arg)
 	if err != nil {
-		ctx.JSON(500, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
 
-	ctx.JSON(200, newUserResponse(user))
+	ctx.JSON(http.StatusOK, newUserResponse(user))
 }
 
+// @Summary      Log in a user
+// @Description  Verify credentials and return access token
+// @Tags         Auth
+// @Accept       json
+// @Produce      json
+// @Param        user  body  loginUserRequest  true  "Login credentials"
+// @Success      200   {object}  loginUserResponse
+// @Failure      400   {object}  swaggerErrorResponse
+// @Failure      401   {object}  swaggerErrorResponse
+// @Failure      404   {object}  swaggerErrorResponse
+// @Failure      500   {object}  swaggerErrorResponse
+// @Router       /api/v1/login [post]
 func (s *Server) loginUser(ctx *gin.Context) {
 	var req loginUserRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(400, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
 

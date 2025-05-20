@@ -55,7 +55,7 @@ func NewServer(config *config.Config, store db.Store, auditSvc audit.Service) (*
 func (s *Server) setupRouter() *gin.Engine {
 	r := gin.New()
 
-	s.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	api := r.Group("/api/v1")
 

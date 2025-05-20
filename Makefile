@@ -38,4 +38,9 @@ migrate-force:
 run:
 	go run cmd/server/main.go
 
-.PHONY: migrate-create migrate-up migrate-down migrate-drop migrate-version migrate-force run sqlc
+#Generate Swagger documentation
+swagdoc:
+	swag init --generalInfo cmd/server/main.go --output docs
+
+
+.PHONY: migrate-create migrate-up migrate-down migrate-drop migrate-version migrate-force run sqlc swagdoc

@@ -27,31 +27,28 @@ type shareSecretResponse struct {
 }
 
 func (s *Server) shareSecret(ctx *gin.Context) {
-
 	var req shareSecretRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
 	authPayload := ctx.MustGet(authorizationPayloadKey).(*auth.Payload)
-	ownerEmail := authPayload.Email
-	// Check if the secret exists
+	ownerEmail := authPayload.Email // Check if the secret exists
 	secret, err := s.store.GetLatestSecretByPath(ctx, req.Path)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			ctx.JSON(http.StatusNotFound, gin.H{"error": "the secret does not exist"})
+			ctx.JSON(http.StatusNotFound, errorResponse(fmt.Errorf("the secret does not exist")))
 			return
 		}
 	}
 
 	// Check if the user is the owner of the secret
 	if secret.UserID != authPayload.UserID {
-		ctx.JSON(http.StatusForbidden, gin.H{"error": "you do not have permission to share this secret"})
+		ctx.JSON(http.StatusForbidden, errorResponse(fmt.Errorf("you do not have permission to share this secret")))
 		return
 	}
-
 	if ownerEmail == req.TargetEmail {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "you cannot share a secret with yourself"})
+		ctx.JSON(http.StatusBadRequest, errorResponse(fmt.Errorf("you cannot share a secret with yourself")))
 		return
 	}
 
@@ -59,22 +56,21 @@ func (s *Server) shareSecret(ctx *gin.Context) {
 	_, err = s.store.GetUserByEmail(ctx, req.TargetEmail)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			ctx.JSON(http.StatusNotFound, gin.H{"error": "the target user does not exist"})
+			ctx.JSON(http.StatusNotFound, errorResponse(fmt.Errorf("the target user does not exist")))
 			return
 		}
 	}
-
 	// Check if the target user is already shared
 	isAlreadyShared, err := s.store.CheckIfShared(ctx, db.CheckIfSharedParams{
 		Path:        req.Path,
 		TargetEmail: req.TargetEmail,
 	})
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check if the secret is already shared"})
+		ctx.JSON(http.StatusInternalServerError, errorResponse(fmt.Errorf("failed to check if the secret is already shared")))
 		return
 	}
 	if isAlreadyShared {
-		ctx.JSON(http.StatusConflict, gin.H{"error": "the secret is already shared with the target user"})
+		ctx.JSON(http.StatusConflict, errorResponse(fmt.Errorf("the secret is already shared with the target user")))
 		return
 	}
 
@@ -108,7 +104,7 @@ func (s *Server) shareSecret(ctx *gin.Context) {
 	})
 
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "failed to share the secret"})
+		ctx.JSON(http.StatusInternalServerError, errorResponse(fmt.Errorf("failed to share the secret")))
 		return
 	}
 
