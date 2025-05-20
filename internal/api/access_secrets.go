@@ -30,11 +30,24 @@ type updateSecretResponse struct {
 	Nonce     []byte `json:"nonce"`
 }
 
+// VerifySecretHMAC verifies the HMAC signature of the encrypted secret and nonce
 func VerifySecretHMAC(secret db.GetLatestSecretByPathRow, key []byte) (bool, error) {
 	payload := util.ComputeHMACPayload(secret.EncryptedValue, secret.Nonce)
 	return util.VerifyHMAC(payload, secret.HmacSignature, key)
 }
 
+// @Summary      Retrieve a secret by path and optional version
+// @Description  Fetches and decrypts the secret. If version is not specified, retrieves the latest. Verifies HMAC to ensure integrity.
+// @Tags         secrets
+// @Produce      json
+// @Param        path     path      string true  "Secret path"
+// @Param        version  query     int    false "Secret version (optional)"
+// @Success      200      {object}  getSecretResponse
+// @Failure 401 {object} swaggerErrorResponse "Unauthorized or HMAC verification failed"
+// @Failure 404 {object} swaggerErrorResponse "Secret not found"
+// @Failure 500 {object} swaggerErrorResponse "Internal server error"
+// @Security     ApiKeyAuth
+// @Router       /secrets/{path} [get]
 func (s *Server) getSecret(ctx *gin.Context) {
 
 	log := logger.New(s.config.Env)
@@ -90,6 +103,19 @@ func (s *Server) getSecret(ctx *gin.Context) {
 
 }
 
+// @Summary      Update an existing secret by creating a new version
+// @Description  Encrypts new secret value, verifies existing HMAC to prevent tampering, then creates a new secret version signed with a fresh HMAC.
+// @Tags         secrets
+// @Accept       json
+// @Produce      json
+// @Param        path     path      string true  "Secret path"
+// @Param        updateSecretRequest  body      updateSecretRequest  true  "New secret value"
+// @Success      200                  {object}  updateSecretResponse
+// @Failure      400                  {object}  swaggerErrorResponse "Invalid input"
+// @Failure      401                  {object}  swaggerErrorResponse "Unauthorized or HMAC verification failed"
+// @Failure      500                  {object}  swaggerErrorResponse "Internal server error"
+// @Security     ApiKeyAuth
+// @Router       /secrets/{path} [put]
 func (s *Server) updateSecret(ctx *gin.Context) {
 
 	var req updateSecretRequest

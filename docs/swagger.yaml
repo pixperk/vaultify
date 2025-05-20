@@ -26,6 +26,15 @@ definitions:
     - name
     - password
     type: object
+  api.getSecretResponse:
+    properties:
+      decrypted_value:
+        type: string
+      path:
+        type: string
+      version:
+        type: integer
+    type: object
   api.loginUserRequest:
     properties:
       email:
@@ -61,6 +70,28 @@ definitions:
     properties:
       error:
         type: string
+    type: object
+  api.updateSecretRequest:
+    properties:
+      value:
+        type: string
+    required:
+    - value
+    type: object
+  api.updateSecretResponse:
+    properties:
+      encrypted_value:
+        items:
+          type: integer
+        type: array
+      nonce:
+        items:
+          type: integer
+        type: array
+      path:
+        type: string
+      version:
+        type: integer
     type: object
   api.userResponse:
     properties:
@@ -190,4 +221,83 @@ paths:
       summary: Register a new user
       tags:
       - Auth
+  /secrets/{path}:
+    get:
+      description: Fetches and decrypts the secret. If version is not specified, retrieves
+        the latest. Verifies HMAC to ensure integrity.
+      parameters:
+      - description: Secret path
+        in: path
+        name: path
+        required: true
+        type: string
+      - description: Secret version (optional)
+        in: query
+        name: version
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.getSecretResponse'
+        "401":
+          description: Unauthorized or HMAC verification failed
+          schema:
+            $ref: '#/definitions/api.swaggerErrorResponse'
+        "404":
+          description: Secret not found
+          schema:
+            $ref: '#/definitions/api.swaggerErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.swaggerErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Retrieve a secret by path and optional version
+      tags:
+      - secrets
+    put:
+      consumes:
+      - application/json
+      description: Encrypts new secret value, verifies existing HMAC to prevent tampering,
+        then creates a new secret version signed with a fresh HMAC.
+      parameters:
+      - description: Secret path
+        in: path
+        name: path
+        required: true
+        type: string
+      - description: New secret value
+        in: body
+        name: updateSecretRequest
+        required: true
+        schema:
+          $ref: '#/definitions/api.updateSecretRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.updateSecretResponse'
+        "400":
+          description: Invalid input
+          schema:
+            $ref: '#/definitions/api.swaggerErrorResponse'
+        "401":
+          description: Unauthorized or HMAC verification failed
+          schema:
+            $ref: '#/definitions/api.swaggerErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.swaggerErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Update an existing secret by creating a new version
+      tags:
+      - secrets
 swagger: "2.0"
