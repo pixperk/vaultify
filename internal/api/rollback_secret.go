@@ -27,6 +27,21 @@ type rollbackSecretResponse struct {
 	Nonce           []byte `json:"nonce"`
 }
 
+// rollbackSecret godoc
+// @Summary      Rollback secret to a previous version
+// @Description  Reverts a secret to a previous version by duplicating the selected version with a new version number. Verifies HMAC before proceeding.
+// @Tags         Secrets
+// @Accept       json
+// @Produce      json
+// @Param        path    path     string                  true  "Secret path"
+// @Param        request body     rollbackSecretRequest   true  "Rollback secret request payload"
+// @Success      200     {object} rollbackSecretResponse
+// @Failure      400     {object} swaggerErrorResponse "Invalid input or bad version"
+// @Failure      401     {object} swaggerErrorResponse "Unauthorized: invalid HMAC or missing token"
+// @Failure      404     {object} swaggerErrorResponse "Secret version not found"
+// @Failure      500     {object} swaggerErrorResponse "Internal server error during rollback"
+// @Security     ApiKeyAuth
+// @Router       /secrets/{path}/rollback [post]
 func (s *Server) rollbackSecret(ctx *gin.Context) {
 	var req rollbackSecretRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {

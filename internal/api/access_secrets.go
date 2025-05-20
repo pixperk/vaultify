@@ -38,7 +38,7 @@ func VerifySecretHMAC(secret db.GetLatestSecretByPathRow, key []byte) (bool, err
 
 // @Summary      Retrieve a secret by path and optional version
 // @Description  Fetches and decrypts the secret. If version is not specified, retrieves the latest. Verifies HMAC to ensure integrity.
-// @Tags         secrets
+// @Tags         Secrets
 // @Produce      json
 // @Param        path     path      string true  "Secret path"
 // @Param        version  query     int    false "Secret version (optional)"
@@ -105,7 +105,7 @@ func (s *Server) getSecret(ctx *gin.Context) {
 
 // @Summary      Update an existing secret by creating a new version
 // @Description  Encrypts new secret value, verifies existing HMAC to prevent tampering, then creates a new secret version signed with a fresh HMAC.
-// @Tags         secrets
+// @Tags         Secrets
 // @Accept       json
 // @Produce      json
 // @Param        path     path      string true  "Secret path"

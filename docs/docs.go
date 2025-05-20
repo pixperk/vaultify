@@ -197,7 +197,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "secrets"
+                    "Secrets"
                 ],
                 "summary": "Retrieve a secret by path and optional version",
                 "parameters": [
@@ -256,7 +256,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "secrets"
+                    "Secrets"
                 ],
                 "summary": "Update an existing secret by creating a new version",
                 "parameters": [
@@ -298,6 +298,76 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/api.swaggerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/secrets/{path}/rollback": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Reverts a secret to a previous version by duplicating the selected version with a new version number. Verifies HMAC before proceeding.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Secrets"
+                ],
+                "summary": "Rollback secret to a previous version",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Secret path",
+                        "name": "path",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Rollback secret request payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.rollbackSecretRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.rollbackSecretResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid input or bad version",
+                        "schema": {
+                            "$ref": "#/definitions/api.swaggerErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized: invalid HMAC or missing token",
+                        "schema": {
+                            "$ref": "#/definitions/api.swaggerErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Secret version not found",
+                        "schema": {
+                            "$ref": "#/definitions/api.swaggerErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error during rollback",
                         "schema": {
                             "$ref": "#/definitions/api.swaggerErrorResponse"
                         }
@@ -383,6 +453,46 @@ const docTemplate = `{
                 },
                 "user": {
                     "$ref": "#/definitions/api.userResponse"
+                }
+            }
+        },
+        "api.rollbackSecretRequest": {
+            "type": "object",
+            "required": [
+                "version"
+            ],
+            "properties": {
+                "version": {
+                    "type": "integer"
+                }
+            }
+        },
+        "api.rollbackSecretResponse": {
+            "type": "object",
+            "properties": {
+                "encrypted_value": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "existing_version": {
+                    "type": "integer"
+                },
+                "new_version": {
+                    "type": "integer"
+                },
+                "nonce": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "path": {
+                    "type": "string"
+                },
+                "to_version": {
+                    "type": "integer"
                 }
             }
         },

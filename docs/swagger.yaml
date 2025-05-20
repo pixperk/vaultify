@@ -53,6 +53,32 @@ definitions:
       user:
         $ref: '#/definitions/api.userResponse'
     type: object
+  api.rollbackSecretRequest:
+    properties:
+      version:
+        type: integer
+    required:
+    - version
+    type: object
+  api.rollbackSecretResponse:
+    properties:
+      encrypted_value:
+        items:
+          type: integer
+        type: array
+      existing_version:
+        type: integer
+      new_version:
+        type: integer
+      nonce:
+        items:
+          type: integer
+        type: array
+      path:
+        type: string
+      to_version:
+        type: integer
+    type: object
   api.secretResponse:
     properties:
       encrypted_value:
@@ -258,7 +284,7 @@ paths:
       - ApiKeyAuth: []
       summary: Retrieve a secret by path and optional version
       tags:
-      - secrets
+      - Secrets
     put:
       consumes:
       - application/json
@@ -299,5 +325,51 @@ paths:
       - ApiKeyAuth: []
       summary: Update an existing secret by creating a new version
       tags:
-      - secrets
+      - Secrets
+  /secrets/{path}/rollback:
+    post:
+      consumes:
+      - application/json
+      description: Reverts a secret to a previous version by duplicating the selected
+        version with a new version number. Verifies HMAC before proceeding.
+      parameters:
+      - description: Secret path
+        in: path
+        name: path
+        required: true
+        type: string
+      - description: Rollback secret request payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.rollbackSecretRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.rollbackSecretResponse'
+        "400":
+          description: Invalid input or bad version
+          schema:
+            $ref: '#/definitions/api.swaggerErrorResponse'
+        "401":
+          description: 'Unauthorized: invalid HMAC or missing token'
+          schema:
+            $ref: '#/definitions/api.swaggerErrorResponse'
+        "404":
+          description: Secret version not found
+          schema:
+            $ref: '#/definitions/api.swaggerErrorResponse'
+        "500":
+          description: Internal server error during rollback
+          schema:
+            $ref: '#/definitions/api.swaggerErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Rollback secret to a previous version
+      tags:
+      - Secrets
 swagger: "2.0"
