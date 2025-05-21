@@ -38,7 +38,7 @@ type secretResponse struct {
 // @Failure      401     {object}  swaggerErrorResponse
 // @Failure      403     {object}  swaggerErrorResponse
 // @Failure      500     {object}  swaggerErrorResponse
-// @Security     ApiKeyAuth
+// @Security     BearerAuth
 // @Router       /secrets [post]
 func (s *Server) createSecret(ctx *gin.Context) {
 	var req createSecretRequest

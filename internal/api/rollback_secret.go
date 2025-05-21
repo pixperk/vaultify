@@ -40,7 +40,7 @@ type rollbackSecretResponse struct {
 // @Failure      401     {object} swaggerErrorResponse "Unauthorized: invalid HMAC or missing token"
 // @Failure      404     {object} swaggerErrorResponse "Secret version not found"
 // @Failure      500     {object} swaggerErrorResponse "Internal server error during rollback"
-// @Security     ApiKeyAuth
+// @Security     BearerAuth
 // @Router       /secrets/{path}/rollback [post]
 func (s *Server) rollbackSecret(ctx *gin.Context) {
 	var req rollbackSecretRequest

@@ -1,5 +1,25 @@
 basePath: /api/v1
 definitions:
+  api.auditLogResponse:
+    properties:
+      action:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      reason:
+        description: pointer avoids issues with NullString
+        type: string
+      resource_path:
+        type: string
+      resource_version:
+        type: integer
+      success:
+        type: boolean
+      user_email:
+        type: string
+    type: object
   api.createSecretRequest:
     properties:
       path:
@@ -25,6 +45,13 @@ definitions:
     - email
     - name
     - password
+    type: object
+  api.getAuditLogsResponse:
+    properties:
+      logs:
+        items:
+          $ref: '#/definitions/api.auditLogResponse'
+        type: array
     type: object
   api.getSecretResponse:
     properties:
@@ -168,6 +195,70 @@ info:
   title: Vaultify API
   version: "1.0"
 paths:
+  /audit/logs:
+    get:
+      consumes:
+      - application/json
+      description: Fetch audit logs for the authenticated user with optional filters
+      parameters:
+      - description: Action filter (e.g., CREATE_SECRET)
+        in: query
+        name: action
+        type: string
+      - description: Resource path filter (e.g., /vault/secrets/foo)
+        in: query
+        name: path
+        type: string
+      - description: Resource version filter
+        in: query
+        name: version
+        type: integer
+      - description: Success status filter (true/false)
+        in: query
+        name: success
+        type: boolean
+      - description: Start date in RFC3339 or YYYY-MM-DD
+        in: query
+        name: from
+        type: string
+      - description: End date in RFC3339 or YYYY-MM-DD
+        in: query
+        name: to
+        type: string
+      - description: Limit number of results (default 50)
+        in: query
+        name: limit
+        type: integer
+      - description: Offset for pagination (default 0)
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of audit logs
+          schema:
+            items:
+              $ref: '#/definitions/api.getAuditLogsResponse'
+            type: array
+        "400":
+          description: Invalid query parameter
+          schema:
+            $ref: '#/definitions/api.swaggerErrorResponse'
+        "404":
+          description: No logs found
+          schema:
+            $ref: '#/definitions/api.swaggerErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.swaggerErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get audit logs
+      tags:
+      - Audit
   /login:
     post:
       consumes:
@@ -244,7 +335,7 @@ paths:
           schema:
             $ref: '#/definitions/api.swaggerErrorResponse'
       security:
-      - ApiKeyAuth: []
+      - BearerAuth: []
       summary: Create a new secret
       tags:
       - Secrets
@@ -282,7 +373,7 @@ paths:
           schema:
             $ref: '#/definitions/api.swaggerErrorResponse'
       security:
-      - ApiKeyAuth: []
+      - BearerAuth: []
       summary: Retrieve a secret by path and optional version
       tags:
       - Secrets
@@ -327,7 +418,7 @@ paths:
           schema:
             $ref: '#/definitions/api.swaggerErrorResponse'
       security:
-      - ApiKeyAuth: []
+      - BearerAuth: []
       summary: Update an existing secret by creating a new version
       tags:
       - Secrets
@@ -373,7 +464,7 @@ paths:
           schema:
             $ref: '#/definitions/api.swaggerErrorResponse'
       security:
-      - ApiKeyAuth: []
+      - BearerAuth: []
       summary: Rollback secret to a previous version
       tags:
       - Secrets
@@ -422,7 +513,7 @@ paths:
           schema:
             $ref: '#/definitions/api.swaggerErrorResponse'
       security:
-      - ApiKeyAuth: []
+      - BearerAuth: []
       summary: Share a secret with another user
       tags:
       - Secrets
@@ -456,4 +547,10 @@ paths:
       summary: Register a new user
       tags:
       - Auth
+securityDefinitions:
+  BearerAuth:
+    description: Type "Bearer <your-paseto-token>" to authenticate.
+    in: header
+    name: Authorization
+    type: apiKey
 swagger: "2.0"

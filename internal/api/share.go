@@ -39,7 +39,7 @@ type shareSecretResponse struct {
 // @Failure      404     {object} swaggerErrorResponse "Secret or target user not found"
 // @Failure      409     {object} swaggerErrorResponse "Secret already shared with target user"
 // @Failure      500     {object} swaggerErrorResponse "Internal server error during sharing"
-// @Security     ApiKeyAuth
+// @Security     BearerAuth
 // @Router       /secrets/share [post]
 func (s *Server) shareSecret(ctx *gin.Context) {
 	var req shareSecretRequest

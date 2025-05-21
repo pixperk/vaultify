@@ -2,6 +2,11 @@
 // @version 1.0
 // @description Secure secret management system in Go
 
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Type "Bearer <your-paseto-token>" to authenticate.
+
 // @contact.name Yashaswi Kumar Mishra
 // @contact.email mishrayashaswikumar@gmail.com
 
