@@ -168,7 +168,7 @@ info:
   title: Vaultify API
   version: "1.0"
 paths:
-  /api/v1/login:
+  /login:
     post:
       consumes:
       - application/json
@@ -206,7 +206,7 @@ paths:
       summary: Log in a user
       tags:
       - Auth
-  /api/v1/secrets:
+  /secrets:
     post:
       consumes:
       - application/json
@@ -248,7 +248,7 @@ paths:
       summary: Create a new secret
       tags:
       - Secrets
-  /api/v1/secrets/{path}:
+  /secrets/{path}:
     get:
       description: Fetches and decrypts the secret. If version is not specified, retrieves
         the latest. Verifies HMAC to ensure integrity.
@@ -318,6 +318,10 @@ paths:
           description: Unauthorized or HMAC verification failed
           schema:
             $ref: '#/definitions/api.swaggerErrorResponse'
+        "404":
+          description: Secret not found
+          schema:
+            $ref: '#/definitions/api.swaggerErrorResponse'
         "500":
           description: Internal server error
           schema:
@@ -327,7 +331,7 @@ paths:
       summary: Update an existing secret by creating a new version
       tags:
       - Secrets
-  /api/v1/secrets/{path}/rollback:
+  /secrets/{path}/rollback:
     post:
       consumes:
       - application/json
@@ -373,13 +377,12 @@ paths:
       summary: Rollback secret to a previous version
       tags:
       - Secrets
-  /api/v1/secrets/share:
+  /secrets/share:
     post:
       consumes:
       - application/json
       description: Allows a user to share their secret with another user, specifying
-        access permission and optional TTL. Verifies JWT and permission ownership
-        before proceeding.
+        access permission and optional TTL. Verifies ownership before proceeding.
       parameters:
       - description: Secret share request payload
         in: body
@@ -399,7 +402,7 @@ paths:
           schema:
             $ref: '#/definitions/api.swaggerErrorResponse'
         "401":
-          description: 'Unauthorized: missing or invalid JWT'
+          description: 'Unauthorized: missing or invalid bearer token'
           schema:
             $ref: '#/definitions/api.swaggerErrorResponse'
         "403":
@@ -423,7 +426,7 @@ paths:
       summary: Share a secret with another user
       tags:
       - Secrets
-  /api/v1/sign-up:
+  /sign-up:
     post:
       consumes:
       - application/json

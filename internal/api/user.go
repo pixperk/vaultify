@@ -53,7 +53,7 @@ func newUserResponse(user db.Users) userResponse {
 // @Success      200   {object}  userResponse
 // @Failure      400   {object}  swaggerErrorResponse
 // @Failure      500   {object}  swaggerErrorResponse
-// @Router       /api/v1/sign-up [post]
+// @Router       /sign-up [post]
 func (s *Server) createUser(ctx *gin.Context) {
 	var req createUserRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -92,7 +92,7 @@ func (s *Server) createUser(ctx *gin.Context) {
 // @Failure      401   {object}  swaggerErrorResponse
 // @Failure      404   {object}  swaggerErrorResponse
 // @Failure      500   {object}  swaggerErrorResponse
-// @Router       /api/v1/login [post]
+// @Router       /login [post]
 func (s *Server) loginUser(ctx *gin.Context) {
 	var req loginUserRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {

@@ -18,7 +18,7 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/api/v1/login": {
+        "/login": {
             "post": {
                 "description": "Verify credentials and return access token",
                 "consumes": [
@@ -76,7 +76,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/secrets": {
+        "/secrets": {
             "post": {
                 "security": [
                     {
@@ -139,14 +139,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/secrets/share": {
+        "/secrets/share": {
             "post": {
                 "security": [
                     {
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Allows a user to share their secret with another user, specifying access permission and optional TTL. Verifies JWT and permission ownership before proceeding.",
+                "description": "Allows a user to share their secret with another user, specifying access permission and optional TTL. Verifies ownership before proceeding.",
                 "consumes": [
                     "application/json"
                 ],
@@ -182,7 +182,7 @@ const docTemplate = `{
                         }
                     },
                     "401": {
-                        "description": "Unauthorized: missing or invalid JWT",
+                        "description": "Unauthorized: missing or invalid bearer token",
                         "schema": {
                             "$ref": "#/definitions/api.swaggerErrorResponse"
                         }
@@ -214,7 +214,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/secrets/{path}": {
+        "/secrets/{path}": {
             "get": {
                 "security": [
                     {
@@ -325,6 +325,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/api.swaggerErrorResponse"
                         }
                     },
+                    "404": {
+                        "description": "Secret not found",
+                        "schema": {
+                            "$ref": "#/definitions/api.swaggerErrorResponse"
+                        }
+                    },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
@@ -334,7 +340,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/secrets/{path}/rollback": {
+        "/secrets/{path}/rollback": {
             "post": {
                 "security": [
                     {
@@ -404,7 +410,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/sign-up": {
+        "/sign-up": {
             "post": {
                 "description": "Create a new user with hashed password",
                 "consumes": [

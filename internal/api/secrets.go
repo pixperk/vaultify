@@ -39,7 +39,7 @@ type secretResponse struct {
 // @Failure      403     {object}  swaggerErrorResponse
 // @Failure      500     {object}  swaggerErrorResponse
 // @Security     ApiKeyAuth
-// @Router       /api/v1/secrets [post]
+// @Router       /secrets [post]
 func (s *Server) createSecret(ctx *gin.Context) {
 	var req createSecretRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
