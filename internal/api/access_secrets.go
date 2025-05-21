@@ -47,7 +47,7 @@ func VerifySecretHMAC(secret db.GetLatestSecretByPathRow, key []byte) (bool, err
 // @Failure 404 {object} swaggerErrorResponse "Secret not found"
 // @Failure 500 {object} swaggerErrorResponse "Internal server error"
 // @Security     ApiKeyAuth
-// @Router       /secrets/{path} [get]
+// @Router       /api/v1/secrets/{path} [get]
 func (s *Server) getSecret(ctx *gin.Context) {
 
 	log := logger.New(s.config.Env)
@@ -115,7 +115,7 @@ func (s *Server) getSecret(ctx *gin.Context) {
 // @Failure      401                  {object}  swaggerErrorResponse "Unauthorized or HMAC verification failed"
 // @Failure      500                  {object}  swaggerErrorResponse "Internal server error"
 // @Security     ApiKeyAuth
-// @Router       /secrets/{path} [put]
+// @Router       /api/v1/secrets/{path} [put]
 func (s *Server) updateSecret(ctx *gin.Context) {
 
 	var req updateSecretRequest

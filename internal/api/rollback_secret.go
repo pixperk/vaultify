@@ -41,7 +41,7 @@ type rollbackSecretResponse struct {
 // @Failure      404     {object} swaggerErrorResponse "Secret version not found"
 // @Failure      500     {object} swaggerErrorResponse "Internal server error during rollback"
 // @Security     ApiKeyAuth
-// @Router       /secrets/{path}/rollback [post]
+// @Router       /api/v1/secrets/{path}/rollback [post]
 func (s *Server) rollbackSecret(ctx *gin.Context) {
 	var req rollbackSecretRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {

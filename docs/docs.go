@@ -139,9 +139,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/sign-up": {
+        "/api/v1/secrets/share": {
             "post": {
-                "description": "Create a new user with hashed password",
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Allows a user to share their secret with another user, specifying access permission and optional TTL. Verifies JWT and permission ownership before proceeding.",
                 "consumes": [
                     "application/json"
                 ],
@@ -149,17 +154,17 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Auth"
+                    "Secrets"
                 ],
-                "summary": "Register a new user",
+                "summary": "Share a secret with another user",
                 "parameters": [
                     {
-                        "description": "User registration info",
-                        "name": "user",
+                        "description": "Secret share request payload",
+                        "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/api.createUserRequest"
+                            "$ref": "#/definitions/api.shareSecretRequest"
                         }
                     }
                 ],
@@ -167,17 +172,41 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/api.userResponse"
+                            "$ref": "#/definitions/api.shareSecretResponse"
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Invalid input or sharing with self",
+                        "schema": {
+                            "$ref": "#/definitions/api.swaggerErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized: missing or invalid JWT",
+                        "schema": {
+                            "$ref": "#/definitions/api.swaggerErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden: not the secret owner",
+                        "schema": {
+                            "$ref": "#/definitions/api.swaggerErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Secret or target user not found",
+                        "schema": {
+                            "$ref": "#/definitions/api.swaggerErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Secret already shared with target user",
                         "schema": {
                             "$ref": "#/definitions/api.swaggerErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "Internal server error during sharing",
                         "schema": {
                             "$ref": "#/definitions/api.swaggerErrorResponse"
                         }
@@ -185,7 +214,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/secrets/{path}": {
+        "/api/v1/secrets/{path}": {
             "get": {
                 "security": [
                     {
@@ -305,7 +334,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/secrets/{path}/rollback": {
+        "/api/v1/secrets/{path}/rollback": {
             "post": {
                 "security": [
                     {
@@ -368,6 +397,52 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal server error during rollback",
+                        "schema": {
+                            "$ref": "#/definitions/api.swaggerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/sign-up": {
+            "post": {
+                "description": "Create a new user with hashed password",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Register a new user",
+                "parameters": [
+                    {
+                        "description": "User registration info",
+                        "name": "user",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.createUserRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.userResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.swaggerErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/api.swaggerErrorResponse"
                         }
@@ -512,6 +587,52 @@ const docTemplate = `{
                     }
                 },
                 "path": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.shareSecretRequest": {
+            "type": "object",
+            "required": [
+                "path",
+                "permission",
+                "target_email"
+            ],
+            "properties": {
+                "path": {
+                    "type": "string"
+                },
+                "permission": {
+                    "type": "string",
+                    "enum": [
+                        "read",
+                        "write"
+                    ]
+                },
+                "share_ttl_secs": {
+                    "type": "integer"
+                },
+                "target_email": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.shareSecretResponse": {
+            "type": "object",
+            "properties": {
+                "owner_email": {
+                    "type": "string"
+                },
+                "path": {
+                    "type": "string"
+                },
+                "permission": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean"
+                },
+                "target_email": {
                     "type": "string"
                 }
             }

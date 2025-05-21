@@ -26,6 +26,21 @@ type shareSecretResponse struct {
 	TargetEmail string `json:"target_email"`
 }
 
+// @Summary      Share a secret with another user
+// @Description  Allows a user to share their secret with another user, specifying access permission and optional TTL. Verifies JWT and permission ownership before proceeding.
+// @Tags         Secrets
+// @Accept       json
+// @Produce      json
+// @Param        request body     shareSecretRequest  true  "Secret share request payload"
+// @Success      200     {object} shareSecretResponse
+// @Failure      400     {object} swaggerErrorResponse "Invalid input or sharing with self"
+// @Failure      401     {object} swaggerErrorResponse "Unauthorized: missing or invalid JWT"
+// @Failure      403     {object} swaggerErrorResponse "Forbidden: not the secret owner"
+// @Failure      404     {object} swaggerErrorResponse "Secret or target user not found"
+// @Failure      409     {object} swaggerErrorResponse "Secret already shared with target user"
+// @Failure      500     {object} swaggerErrorResponse "Internal server error during sharing"
+// @Security     ApiKeyAuth
+// @Router       /api/v1/secrets/share [post]
 func (s *Server) shareSecret(ctx *gin.Context) {
 	var req shareSecretRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {

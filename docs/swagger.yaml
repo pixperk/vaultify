@@ -92,6 +92,37 @@ definitions:
       path:
         type: string
     type: object
+  api.shareSecretRequest:
+    properties:
+      path:
+        type: string
+      permission:
+        enum:
+        - read
+        - write
+        type: string
+      share_ttl_secs:
+        type: integer
+      target_email:
+        type: string
+    required:
+    - path
+    - permission
+    - target_email
+    type: object
+  api.shareSecretResponse:
+    properties:
+      owner_email:
+        type: string
+      path:
+        type: string
+      permission:
+        type: string
+      success:
+        type: boolean
+      target_email:
+        type: string
+    type: object
   api.swaggerErrorResponse:
     properties:
       error:
@@ -217,37 +248,7 @@ paths:
       summary: Create a new secret
       tags:
       - Secrets
-  /api/v1/sign-up:
-    post:
-      consumes:
-      - application/json
-      description: Create a new user with hashed password
-      parameters:
-      - description: User registration info
-        in: body
-        name: user
-        required: true
-        schema:
-          $ref: '#/definitions/api.createUserRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/api.userResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/api.swaggerErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/api.swaggerErrorResponse'
-      summary: Register a new user
-      tags:
-      - Auth
-  /secrets/{path}:
+  /api/v1/secrets/{path}:
     get:
       description: Fetches and decrypts the secret. If version is not specified, retrieves
         the latest. Verifies HMAC to ensure integrity.
@@ -326,7 +327,7 @@ paths:
       summary: Update an existing secret by creating a new version
       tags:
       - Secrets
-  /secrets/{path}/rollback:
+  /api/v1/secrets/{path}/rollback:
     post:
       consumes:
       - application/json
@@ -372,4 +373,84 @@ paths:
       summary: Rollback secret to a previous version
       tags:
       - Secrets
+  /api/v1/secrets/share:
+    post:
+      consumes:
+      - application/json
+      description: Allows a user to share their secret with another user, specifying
+        access permission and optional TTL. Verifies JWT and permission ownership
+        before proceeding.
+      parameters:
+      - description: Secret share request payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.shareSecretRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.shareSecretResponse'
+        "400":
+          description: Invalid input or sharing with self
+          schema:
+            $ref: '#/definitions/api.swaggerErrorResponse'
+        "401":
+          description: 'Unauthorized: missing or invalid JWT'
+          schema:
+            $ref: '#/definitions/api.swaggerErrorResponse'
+        "403":
+          description: 'Forbidden: not the secret owner'
+          schema:
+            $ref: '#/definitions/api.swaggerErrorResponse'
+        "404":
+          description: Secret or target user not found
+          schema:
+            $ref: '#/definitions/api.swaggerErrorResponse'
+        "409":
+          description: Secret already shared with target user
+          schema:
+            $ref: '#/definitions/api.swaggerErrorResponse'
+        "500":
+          description: Internal server error during sharing
+          schema:
+            $ref: '#/definitions/api.swaggerErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Share a secret with another user
+      tags:
+      - Secrets
+  /api/v1/sign-up:
+    post:
+      consumes:
+      - application/json
+      description: Create a new user with hashed password
+      parameters:
+      - description: User registration info
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/api.createUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.userResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.swaggerErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.swaggerErrorResponse'
+      summary: Register a new user
+      tags:
+      - Auth
 swagger: "2.0"
