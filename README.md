@@ -138,6 +138,62 @@ Vaultify is a modular, fast, and secure secrets management backend written in Go
    All actions are logged and queryable.
 
 ---
+##  Project Structure
+
+```
+.
+├── cmd/ # Entrypoint (main.go)
+├── internal/
+│ ├── api/ # HTTP handlers and routes
+│ ├── auth/ # PASETO auth logic
+│ ├── config/ # Configuration and env loading
+│ ├── db/ # SQLC and migrations
+│ ├── logger/ # Zap logger setup
+│ ├── secrets/ # Core business logic for secret CRUD
+│ └── util/ # Helpers & common utilities
+├── Dockerfile # (WIP) App Dockerfile
+├── docker-compose.yml # Local DB setup
+├── Makefile # Dev scripts (run, migrate, etc)
+├── go.mod/go.sum # Go deps
+└── sqlc.yaml # SQLC config
+```
+---
+## ⚙️ Setup Instructions
+
+### 1. Clone and configure
+
+```bash
+git clone https://github.com/yourname/vaultify.git
+cd vaultify
+cp app.env.example app.env # Edit DB creds, secrets, etc
+```
+
+### 2. Run PostgreSQL
+
+```bash
+docker-compose up -d
+```
+
+### 3. Run Migrations
+
+```bash
+make migrate-up
+```
+
+### 4. Generate SQL Queries
+
+```bash
+make sqlc
+```
+
+### 5. Start the Server
+
+```bash
+make run
+```
+
+---
+
 
 ## File/Folder Responsibility Table
 
