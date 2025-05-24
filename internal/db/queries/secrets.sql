@@ -33,24 +33,26 @@ WHERE s.user_id = $1
   AND (s.expires_at IS NULL OR s.expires_at > now())
 ORDER BY s.id, sv.version DESC;
 
+
 -- name: CreateNewSecretVersion :one
+WITH secret_row AS (
+  SELECT id FROM secrets WHERE path = $1 FOR UPDATE
+),
+version_cte AS (
+  SELECT COALESCE(MAX(version), 0) + 1 AS next_version
+  FROM secret_versions
+  WHERE secret_id = (SELECT id FROM secret_row)
+)
 INSERT INTO secret_versions (
   secret_id, version, encrypted_value, nonce, created_by,
   hmac_signature, hmac_key_id
 )
 SELECT 
-  s.id,
-  COALESCE(MAX(sv.version), 0) + 1,
-  $2,  -- encrypted_value
-  $3,  -- nonce
-  $4,  -- created_by
-  $5,  -- hmac_signature
-  $6   -- hmac_key_id
-FROM secrets s
-LEFT JOIN secret_versions sv ON s.id = sv.secret_id
-WHERE s.path = $1
-GROUP BY s.id
+  (SELECT id FROM secret_row),
+  (SELECT next_version FROM version_cte),
+  $2, $3, $4, $5, $6
 RETURNING *;
+
 
 
 

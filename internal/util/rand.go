@@ -1,6 +1,7 @@
 package util
 
 import (
+	"database/sql"
 	"fmt"
 	"math/rand"
 	"time"
@@ -30,4 +31,11 @@ func RandomName() string {
 
 func RandomEmail() string {
 	return fmt.Sprintf("%s@email.com", RandomString(6))
+}
+
+func RandomSqlNullTime() sql.NullTime {
+	return sql.NullTime{
+		Time:  time.Now().Add(time.Duration(RandomInt(-720, 720)) * time.Hour),
+		Valid: rand.Intn(2) == 1, // Randomly make it valid or invalid
+	}
 }
