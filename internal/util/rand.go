@@ -35,7 +35,7 @@ func RandomEmail() string {
 
 func RandomSqlNullTime() sql.NullTime {
 	return sql.NullTime{
-		Time:  time.Now().Add(time.Duration(RandomInt(-720, 720)) * time.Hour),
+		Time:  time.Now().Add(time.Duration(RandomInt(0, 720)) * time.Hour),
 		Valid: rand.Intn(2) == 1, // Randomly make it valid or invalid
 	}
 }
